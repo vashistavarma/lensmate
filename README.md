@@ -65,6 +65,16 @@ Results on the synthetic benchmark (8 cases, RTX 5060 Laptop 8 GB, Qwen2.5-VL 7B
 
 **Memory ablation:** asked *"What is the green triangle called?"* **with** the taught fact the model answers *"a Zorp"*, and **without** it, *"a triangle"*. So the improvement comes from the memory feature.
 
+### Real-object evaluation (bring your own photos)
+The synthetic benchmark is easy, so there is a second harness for real objects:
+```bash
+# 1. In the app, press 📷 on each object (about 20-30 frames: everyday items, niche hardware, text)
+python3 eval/real_eval.py ingest ~/Downloads     # copies lensmate_*.jpg into eval/real/ (git-ignored, stays private)
+# 2. Edit eval/real/labels.csv: put accepted names in `truth`, separated by |   e.g.  motor driver|l298n|h-bridge
+python3 eval/real_eval.py run                    # asks "What is this object?", auto-scores, writes eval/real/results.csv
+```
+Results from this run belong in the table above once collected. With ~25 images the accuracy is indicative, not precise.
+
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
 - In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
