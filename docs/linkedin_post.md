@@ -1,8 +1,6 @@
 # LinkedIn post kit
 
-Note: the public repo contains the front end only; the server and evaluation code are private.
-
-Attach the **demo video** (upload natively). Use the public-safe diagram (`assets/architecture.png` in the public repo, also saved as `architecture_public.png`) as the second image; the internal `docs/architecture.png` shows endpoint names, so keep it private. The repo link is already filled in.
+Attach the **demo video** (upload natively). Use `architecture.png` as the second image or in the first comment. The repo link is already filled in.
 
 ## Main post (recommended)
 
@@ -27,19 +25,19 @@ What I learned by measuring instead of assuming:
 3️⃣ The model can't follow motion across frames (it called left-to-right motion "circular rotation"). So motion is measured in code, and the model just names what's moving.
 4️⃣ A newer model (Qwen3-VL 8B) scored 0/8 and was 6× slower, so I kept the older one.
 
-Honest limits: the real-object test is 8 photos of 2 objects, and action recognition is only tested on synthetic clips so far. 
+Honest limits: the real-object test is 8 photos of 2 objects, and action recognition is only tested on synthetic clips so far. Details, benchmarks and failures are in the repo.
 
-Front-end code and architecture: https://github.com/vashistavarma/lensmate
+Code, architecture and evaluation: https://github.com/vashistavarma/lensmate
 
 #GenerativeAI #MixedReality #ComputerVision #LLM #Ollama #BuildInPublic
 
 ## Short version
 
-Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model on a laptop GPU. Labels follow objects on the live video, it describes what you're doing, and you can teach it new objects with one photo. Best lesson: my 7B model named niche hardware correctly 1 time in 8, until I taught it, and the boxes were 1.2× off until I matched the model's resize resolution. Demo + front-end code: https://github.com/vashistavarma/lensmate #GenerativeAI #MixedReality #Ollama
+Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model on a laptop GPU. Labels follow objects on the live video, it describes what you're doing, and you can teach it new objects with one photo. Best lesson: my 7B model named niche hardware correctly 1 time in 8, until I taught it, and the boxes were 1.2× off until I matched the model's resize resolution. Demo + code: https://github.com/vashistavarma/lensmate #GenerativeAI #MixedReality #Ollama
 
 ## First comment (post it right after)
 
-The front-end code and the architecture diagram are in the repo; the model server and evaluation code stay private for now. Happy to answer questions about running a vision model locally, the box-scaling bug, or how the teach-by-showing memory works!
+Architecture and the full list of things that failed first (box scaling, false matches, multi-frame motion, a model swap that made things worse) are in the repo's docs/DESIGN_NOTES.md. Happy to answer questions about running a vision model locally!
 
 ## Image alt text (for architecture.png)
 
@@ -48,7 +46,7 @@ Architecture diagram of LensMate: camera, voice, text and click inputs feed a br
 ## Posting checklist
 
 - [ ] Video is under 90 s, has captions, starts with the labels + companion on screen (no long intro)
-- [ ] `https://github.com/vashistavarma/lensmate` filled in; the public repo is front end only and its README opens with the architecture image
+- [ ] `https://github.com/vashistavarma/lensmate` filled in; repo is public and the README opens with the architecture image
 - [ ] Numbers in the post match `README.md` (they were measured on the final code)
 - [ ] Post Tue-Thu morning; reply to every comment in the first hour
 - [ ] Mention your course or instructor only if they are fine with it
