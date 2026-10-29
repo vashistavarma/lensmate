@@ -56,6 +56,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs pyt
 ```
 The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. Taught object names are sent as Whisper hotwords so it can spell words like "mecanum".
 
+The server listens on `127.0.0.1` only (your camera frames and GPU are not exposed to the network); set `HOST=0.0.0.0` to allow LAN access.
+
 Try: *"What is this?"*, *"label everything"*, *"find the scissors"*, hold **Space** to talk.
 
 ## Evaluation

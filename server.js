@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '127.0.0.1'; // localhost only: the camera frames and the GPU are not exposed to the LAN
 const STT = process.env.STT_URL || 'http://127.0.0.1:3001'; // offline speech service (stt_server.py)
 const OLLAMA = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const MODEL = process.env.MODEL || 'qwen2.5vl:7b';
@@ -131,4 +132,4 @@ http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);
   serveStatic(req, res);
-}).listen(PORT, () => console.log(`LensMate on http://localhost:${PORT} (model ${MODEL})`));
+}).listen(PORT, HOST, () => console.log(`LensMate on http://${HOST}:${PORT} (model ${MODEL})`));
