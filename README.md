@@ -75,7 +75,14 @@ python3 eval/real_eval.py run                    # asks "What is this object?", 
 ```
 Results from this run belong in the table above once collected. With ~25 images the accuracy is indicative, not precise.
 
-**Preliminary result (one object, 4 photos of a mecanum wheel):** unaided recognition **0/4**: the model described real features ("yellow and black", "gear-like", "roller") but never named it. With the taught fact *"this is a mecanum wheel"* it answered correctly **4/4**, though this is an easy test because the name is supplied, and its follow-up explanation was partly off (it called the wheel a "caster wheel"). Teach-me fixes *naming*, not the model's *knowledge* about the object.
+**Preliminary real-object results (2 objects, 4 photos each, auto-scored by keyword):**
+
+| Object | Unaided | With taught fact |
+|---|---|---|
+| Mecanum wheel | 0/4 | 4/4 |
+| Motor driver | 1/4 | 4/4 |
+
+The model describes real features but mostly cannot name niche hardware: it called the mecanum wheel a "gear" or "roller", and the motor driver an "Arduino Uno" or a "DC-DC converter" (right category, wrong part); its one motor-driver hit also called an L298N a *stepper* driver, so keyword scoring is lenient. Taught facts make it name the object, but it does not add knowledge (a mecanum wheel was later explained as a "caster wheel"). The taught-fact column is an easy, optimistic test because the name is supplied.
 
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
