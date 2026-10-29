@@ -9,9 +9,11 @@ For my Introduction to Generative AI course I wanted to see how far a *local* vi
 🎥 Your webcam is the passthrough view
 🗣️ Talk to it (push-to-talk), and it answers out loud
 🔍 Say "find my keys" and it draws labels on the live video that stay on the object as you move
+👆 Click any object to zoom in and ask about it
 🛸 A 3D companion floats over the scene and flies to whatever it's talking about
 🧠 Show it an object, say "this is a motor driver", and it recognises it next time
 🔒 Optional fully offline speech (Whisper on the CPU, ~0.8 s per command)
+💬 Saved chats, like ChatGPT
 
 How it works: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU) for vision + language, a tiny zero-dependency Node server, and a browser front end with Three.js and the Web Speech API.
 
