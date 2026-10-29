@@ -16,7 +16,8 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
 | Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
-| Teach me | Say *"this is an L298N motor driver"* or *"remember that the red box is mine"*. The fact is injected into later prompts, persisted in the browser, and cleared with *"forget everything"*. |
+| Teach me | Say *"remember that the red box is mine"* (text fact) or hold an object up and say *"this is an L298N motor driver"* / *"remember this as …"*: LensMate stores the words **and a reference photo**. Persisted in the browser; cleared with *"forget everything"*. |
+| Visual memory | On each question the server checks every taught photo against the live frame with a separate yes/no vision query (max 3, ~1.3 s each). Only verified matches are given to the model, so it recognises taught objects on sight without false matches. |
 
 ## Architecture
 
@@ -33,6 +34,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 
 Key design points:
 - **Grounding calibration:** Qwen2.5-VL returns boxes in the pixel space of the image *after Ollama resizes it*. Smaller images are upscaled, so coordinates come back about 1.2× too large. Sending frames at exactly **1204×672** gives 1:1 coordinates, which I verified empirically (mean IoU 0.96 on the benchmark).
+- **Visual memory design:** putting reference photos straight into the prompt recognised the objects but *also claimed matches on unrelated images* (4/4 false positives). Verifying each reference with its own yes/no question fixed that. The prototype got 19/20 pair decisions right with no false positives.
 - **Tracking:** `tracker.js` matches each box's patch between small grayscale frames (sum of absolute differences, ±6 px per step). A box is dropped after 8 consecutive bad matches. Unit tests (`node eval/test_tracker.js`) and a headless-Chrome integration test (`eval/track_page.html`: box within 2 px after an 80 px pan) cover it.
 - **Cheap context:** only the newest user turn carries an image. History is text-only.
 - **Event bus:** the avatar listens to small `lens-state` and `lens-point` browser events, so UI modules stay decoupled.
@@ -84,6 +86,16 @@ Results from this run belong in the table above once collected. With ~25 images 
 
 The model describes real features but mostly cannot name niche hardware: it called the mecanum wheel a "gear" or "roller", and the motor driver an "Arduino Uno" or a "DC-DC converter" (right category, wrong part); its one motor-driver hit also called an L298N a *stepper* driver, so keyword scoring is lenient. Taught facts make it name the object, but it does not add knowledge (a mecanum wheel was later explained as a "caster wheel"). The taught-fact column is an easy, optimistic test because the name is supplied.
 
+**Visual memory (`eval/visual_memory_eval.py`, same 8 real photos; one photo per object is the taught reference, the rest are tests):**
+
+| Test | Result |
+|---|---|
+| Held-out photos recognised by taught photo (unaided was 1/6) | **5/6** |
+| False claims on unrelated images | **0/4** |
+| False claims: other object shown, wrong reference only | **0/6** |
+
+Caveat: the reference and test photos come from the same session, room, and lighting, so 5/6 is optimistic for the real world, and the metric counts the taught name appearing in the answer. Cost: about 1.3 s per taught photo checked before each answer.
+
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
 - In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
@@ -101,7 +113,7 @@ public/spatial.js    boxes over video, find/label commands, tracking loop
 public/tracker.js    block-matching box tracker (pure functions, unit-tested)
 public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)
 public/ui.js         modes, teach-me memory, snapshot
-eval/                benchmark generator, runner, results.json, tracker tests
+eval/                benchmark generator, runner, results.json, tracker tests, real-object and visual-memory harnesses
 ```
 
 ## Future work
