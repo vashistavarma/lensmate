@@ -20,6 +20,10 @@ sudo apt install ./LensMate-0.1.0-linux-amd64.deb
 
 Windows (`.exe`) and macOS (`.dmg`) installers are built by CI (see below) and are **not tested yet**. They are unsigned: Windows SmartScreen shows "unknown publisher" (More info, Run anyway), and on macOS right-click the app and choose Open the first time.
 
+## Your data and moving taught objects
+
+The app always serves itself on `http://127.0.0.1:47831`, so taught objects, chats and settings persist between launches (a browser keeps them per address). The desktop app and the browser version at `localhost:3000` do **not** share memory. To carry taught objects across: in the app that has them open the 🧠 panel and press **Export**, then in the other app open 🧠 and press **Import**. Importing merges, and never creates duplicates.
+
 ## Voice
 
 Chrome's cloud speech recognition does not work inside Electron, so the desktop app uses the **offline microphone** engine, which needs the optional speech service (`stt_server.py`, faster-whisper; see the main README). Without it, the app says so and you can type your questions. Everything else works without it. Bundling speech into the installer is a possible next step.

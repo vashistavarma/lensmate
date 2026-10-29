@@ -19,6 +19,18 @@ const freePort = () => new Promise((resolve, reject) => {
   s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
 });
 
+// The address must not change between launches: browsers keep taught photos, chats and settings per address.
+const PREFERRED_PORT = 47831;
+const portFree = p => new Promise(resolve => {
+  const s = net.createServer();
+  s.once('error', () => resolve(false));
+  s.listen(p, '127.0.0.1', () => s.close(() => resolve(true)));
+});
+async function pickPort() {
+  for (let p = PREFERRED_PORT; p < PREFERRED_PORT + 10; p++) if (await portFree(p)) return p;
+  return freePort(); // all busy: fall back to a random port (memory will not carry over this time)
+}
+
 async function ollamaStatus() {
   try {
     const j = await (await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(2000) })).json();
@@ -55,7 +67,7 @@ async function startApp() {
     await systemPreferences.askForMediaAccess('camera').catch(() => {});
     await systemPreferences.askForMediaAccess('microphone').catch(() => {});
   }
-  port = await freePort();
+  port = await pickPort();
   process.env.PORT = String(port); process.env.HOST = '127.0.0.1'; process.env.MODEL = MODEL;
   require('./server/server.js'); // starts listening on 127.0.0.1:<port>
   for (let i = 0; i < 50; i++) { // wait until it answers

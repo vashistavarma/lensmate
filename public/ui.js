@@ -66,8 +66,32 @@ document.getElementById('snap').addEventListener('click', () => {
 });
 
 // --- Memory panel: see and delete what was taught (photos and facts) ---
+function exportMemory() {
+  const blob = new Blob([JSON.stringify({ app: 'lensmate-memory', version: 1, facts, refs })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lensmate-memory.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function importMemory(file) { // merge a memory export (e.g. from the browser version) into this one
+  let d; try { d = JSON.parse(await file.text()); } catch {}
+  if (!d || d.app !== 'lensmate-memory') return addMsg('That file is not a LensMate memory export.', 'bot');
+  let nf = 0, nr = 0;
+  for (const f of Array.isArray(d.facts) ? d.facts : []) if (typeof f === 'string' && f.length <= 200 && !facts.includes(f)) { facts.push(f); nf++; }
+  for (const r of Array.isArray(d.refs) ? d.refs : []) {
+    if (r && typeof r.name === 'string' && r.name.length <= 60 && typeof r.image === 'string' && /^data:image\/jpeg;base64,/.test(r.image) && r.image.length < 400000 && !refs.some(x => x.name === r.name)) { refs.push({ name: r.name, image: r.image }); nr++; }
+  }
+  while (refs.length > MAX_REFS_STORED) refs.shift();
+  saveFacts(); saveRefs();
+  addMsg(`Imported ${nr} photo${nr === 1 ? '' : 's'} and ${nf} fact${nf === 1 ? '' : 's'}.`, 'bot');
+}
+
 function renderMem() {
   memEl.replaceChildren();
+  const bar = document.createElement('div'); bar.className = 'memrow';
+  const mk = (label, title, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.title = title; b.style.cssText = 'background:#24303a;color:var(--text);padding:4px 10px'; b.onclick = fn; return b; };
+  const file = document.createElement('input'); file.type = 'file'; file.accept = 'application/json,.json'; file.hidden = true;
+  file.onchange = () => { if (file.files[0]) importMemory(file.files[0]); file.value = ''; };
+  bar.append(mk('⬇ Export', 'Save everything taught to a file', exportMemory), mk('⬆ Import', 'Load a memory file (for example from the browser version)', () => file.click()), file);
+  memEl.append(bar);
   const head = t => { const d = document.createElement('div'); d.className = 'memhead'; d.textContent = t; memEl.append(d); };
   const row = (label, img, onDelete) => {
     const d = document.createElement('div'); d.className = 'memrow';
