@@ -30,6 +30,9 @@ Offline speech got 2-4% WER on 10 command sentences (it varies by a word between
 ## 6. Tracking labels cheaply
 Detection takes 1-3 s, so labels would land on a scene that already moved. A block-matching tracker (sum of absolute differences on 301×168 grayscale, ±6 px per step at ~20 fps) first catches each box up from the frame it was detected in (±20 px search), then follows it. A "lost" threshold of 16 (good matches cost ~2, an unrelated scene ~25) drops labels whose object left. Untextured patches are left in place instead of drifting randomly. Verified with 8 unit tests and an in-browser integration test (box within 2 px after an 80 px pan).
 
+### 6b. Labels that outlived their object
+In a recorded demo a "battery" label stayed on a black T-shirt after the battery was removed, and "measuring tape" floated over empty space. The frame-to-frame tracker follows whatever is under the box, so once the object leaves it happily follows the background (and a dark object on dark cloth gives almost no contrast to notice). Fix: each label stores a reference patch of its object and compares it with the current patch by normalised correlation (insensitive to brightness; a flat region counts as "gone"); below 0.4 for ten consecutive ticks (~0.5 s) the label is dropped, the reference slowly adapts while the match is strong, and the label lifetime fell from 60 s to 20 s. A real-browser test with a dark low-contrast object (`eval/stale_label_test.py`) fails on the old code (label still there after removal) and passes now (gone after ~0.5 s); 8 new unit tests cover the scoring.
+
 ## 7. Ollama quirks worth knowing
 - **Context size:** the default 4096 tokens overflowed with 4+ images. All calls now use `num_ctx: 8192` consistently, because changing it between calls makes Ollama reload the model.
 - **Thinking models:** `think: false` is sent on every request so models such as Qwen3-VL do not spend seconds "thinking" first.

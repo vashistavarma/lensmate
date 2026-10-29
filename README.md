@@ -13,7 +13,7 @@ No headset, no cloud API, no API bill: the vision-language model runs locally th
 | | |
 |---|---|
 | **See and chat** | Every question carries the current camera frame to a local vision-language model (Qwen2.5-VL 7B). Replies stream in token by token and are spoken sentence by sentence. Modes: 💬 Chat, 🎓 Explain, 👁 Describe, 📖 Read / translate. |
-| **Spatial labels** | `find my keys`, `label everything`: the model returns bounding boxes (grounding) and neon labels are drawn over the video. A lightweight block-matching tracker keeps each label on its object at ~20 fps, after first catching it up for the 1-3 s the model took to answer. |
+| **Spatial labels** | `find my keys`, `label everything`: the model returns bounding boxes (grounding) and neon labels are drawn over the video. A lightweight block-matching tracker keeps each label on its object at ~20 fps, after first catching it up for the 1-3 s the model took to answer. Each label also remembers how its object looked: when the patch under the box stops resembling it (the object left or was swapped) the label disappears within about half a second, and no label lives longer than 20 s. |
 | **Mirror view** | On by default (the 🪞 button toggles it): the camera is shown like a mirror. Only the picture on screen and the action frames are mirrored; frames sent for chat, reading and detection stay true, so text stays readable. Labels, clicks and left/right wording follow what you see. |
 | **Click-to-ask** | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | **Actions and recording** | Ask *"what am I doing?"* (last ~4 s from an in-browser rolling buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion is **measured in code**; the model gets 2-3 key frames plus that measurement. |
@@ -72,7 +72,8 @@ node eval/test_tracker.js && node eval/test_motion.js                # unit test
 .venv/bin/python eval/make_cases.py && .venv/bin/python eval/run_eval.py   # synthetic benchmark
 .venv/bin/python eval/action_eval.py                                 # actions (needs Chrome)
 .venv/bin/python eval/stt_eval.py path/to/en_US-lessac-medium.onnx   # offline speech (a Piper voice file)
-google-chrome --headless=new --virtual-time-budget=6000 --dump-dom file://$PWD/eval/track_page.html | grep -o "<title>.*</title>"   # tracker in a browser
+google-chrome --headless=new --user-data-dir=$(mktemp -d) --virtual-time-budget=6000 --dump-dom file://$PWD/eval/track_page.html | grep -o "<title>.*</title>"   # tracker in a browser
+.venv/bin/python eval/stale_label_test.py                            # labels vanish when their object leaves (needs Chrome)
 ```
 The real-photo scripts (`real_eval.py`, `visual_memory_eval.py`) need your own labelled snapshots: see below.
 
@@ -123,7 +124,7 @@ Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md)
 - A 7B local model **does not know niche hardware by name** (mecanum wheel, motor driver). Teaching fixes the *name*, not the model's *knowledge* about the object (it once explained a mecanum wheel as a "caster wheel").
 - Visual-memory tests use reference and test photos from the same room and lighting, so they are optimistic.
 - Action recognition was tested on **synthetic clips only**. The motion measure follows one blob (several moving things merge), cannot name gestures beyond direction and repetition, and its thresholds are untested on real webcam noise. The model sometimes repeats the measurement wording.
-- The tracker follows **translation only** (no scale/rotation), loses fast motion, and ignores featureless patches.
+- The tracker follows **translation only** (no scale/rotation), can drop a label if more than about half of the object is covered (for example by your hand), loses fast motion, and ignores featureless patches.
 - A webcam is not a headset: this is a mixed-reality *prototype* (virtual companion and anchored labels over a live camera feed), not spatial mapping.
 - Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine.
 
