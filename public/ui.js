@@ -1,6 +1,7 @@
 // Response modes, "teach me" memory (text facts + reference photos), and frame snapshot.
 const modeSel = document.getElementById('mode');
 const factsEl = document.getElementById('facts');
+const memEl = document.getElementById('mem');
 window.lensMode = () => modeSel.value;
 
 // --- Teach-me memory, persisted in this browser ---
@@ -17,7 +18,7 @@ function saveRefs() {
   }
   showFacts();
 }
-const showFacts = () => { factsEl.textContent = (facts.length || refs.length) ? `🧠 ${facts.length} facts · 📷 ${refs.length}` : ''; };
+const showFacts = () => { factsEl.textContent = `🧠 ${facts.length} · 📷 ${refs.length}`; if (!memEl.hidden) renderMem(); };
 window.lensFacts = () => facts;
 window.lensRefs = () => refs;
 showFacts();
@@ -63,3 +64,47 @@ document.getElementById('snap').addEventListener('click', () => {
   const a = document.createElement('a');
   a.href = f; a.download = `lensmate_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`; a.click();
 });
+
+// --- Memory panel: see and delete what was taught (photos and facts) ---
+function renderMem() {
+  memEl.replaceChildren();
+  const head = t => { const d = document.createElement('div'); d.className = 'memhead'; d.textContent = t; memEl.append(d); };
+  const row = (label, img, onDelete) => {
+    const d = document.createElement('div'); d.className = 'memrow';
+    if (img) { const i = document.createElement('img'); i.src = img; d.append(i); }
+    const sp = document.createElement('span'); sp.textContent = label; // textContent: taught text is never parsed as HTML
+    const b = document.createElement('button'); b.textContent = '✕'; b.title = 'Delete'; b.onclick = onDelete;
+    d.append(sp, b); memEl.append(d);
+  };
+  if (!facts.length && !refs.length) { const d = document.createElement('div'); d.textContent = "Nothing taught yet. Hold an object up and say \"this is a …\"."; memEl.append(d); return; }
+  if (refs.length) head('Photos');
+  refs.forEach((r, i) => row(r.name, r.image, () => { refs.splice(i, 1); saveRefs(); }));
+  if (facts.length) head('Facts');
+  facts.forEach((f, i) => row(f, null, () => { facts.splice(i, 1); saveFacts(); }));
+}
+factsEl.addEventListener('click', () => { memEl.hidden = !memEl.hidden; if (!memEl.hidden) renderMem(); });
+showFacts();
+
+// --- First-run help: welcome message + one-tap suggestions ---
+addMsg("Hi, I'm LensMate. Hold 🎤 (or Space) to talk, or type. I can describe what the camera sees, label and follow objects, and learn new ones: hold something up and say \"this is a …\".", 'bot');
+const chipsEl = document.getElementById('chips'), inputEl2 = document.getElementById('q');
+[['🔍 Label everything', 'label everything', true], ['What is this?', 'What is this?', true], ['Find…', 'find ', false],
+ ['This is…', 'this is a ', false], ['What do you remember?', 'what do you remember?', true]].forEach(([label, text, send]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label;
+  b.onclick = () => { if (send) window.lensAsk(text); else { inputEl2.value = text; inputEl2.focus(); } };
+  chipsEl.append(b);
+});
+
+// --- Service lights (vision model in Ollama, offline speech service) ---
+const healthEl = document.getElementById('health');
+async function pollHealth() {
+  try {
+    const h = await (await fetch('/api/health')).json();
+    healthEl.innerHTML = '';
+    for (const [name, ok, tip] of [['vision', h.vision, `model ${h.model} ${h.vision ? 'ready' : 'not found: run ollama pull ' + h.model}`], ['speech', h.speech, h.speech ? 'offline speech ready' : 'offline speech service not running (optional)']]) {
+      const d = document.createElement('span'); d.className = 'dot ' + (ok ? 'ok' : 'bad'); d.title = tip;
+      healthEl.append(d, name);
+    }
+  } catch { healthEl.textContent = 'server unreachable'; }
+}
+pollHealth(); setInterval(pollHealth, 5000);

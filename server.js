@@ -113,6 +113,17 @@ async function detect(req, res) {
   }
 }
 
+// Service status for the UI lights: is the vision model installed in Ollama, is the speech service up?
+async function health(res) {
+  const j = { model: MODEL, vision: false, speech: false };
+  try {
+    const t = await (await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(1500) })).json();
+    j.vision = (t.models || []).some(m => m.name === MODEL || m.name === MODEL + ':latest');
+  } catch {}
+  try { j.speech = (await fetch(`${STT}/`, { signal: AbortSignal.timeout(1500) })).ok; } catch {}
+  res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j));
+}
+
 // Offline speech-to-text: forward the recorded audio to stt_server.py (faster-whisper).
 async function stt(req, res) {
   const chunks = [];
@@ -128,6 +139,7 @@ async function stt(req, res) {
 }
 
 http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/api/health') return health(res);
   if (req.method === 'POST' && req.url.split('?')[0] === '/api/stt') return stt(req, res);
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);
