@@ -1,0 +1,68 @@
+{
+ "summary": {
+  "chat_accuracy": "5/5",
+  "detect_pass_iou50": "3/3",
+  "detect_mean_iou": 0.958,
+  "chat_first_token_s_median": 1.3,
+  "chat_total_s_median": 1.48,
+  "detect_s_median": 1.26
+ },
+ "cases": [
+  {
+   "id": "colour",
+   "ok": true,
+   "ttft": 0.05754280090332031,
+   "total": 0.09616756439208984,
+   "answer": "Blue."
+  },
+  {
+   "id": "count",
+   "ok": true,
+   "ttft": 1.3276400566101074,
+   "total": 1.345757246017456,
+   "answer": "3"
+  },
+  {
+   "id": "read",
+   "ok": true,
+   "ttft": 1.2862091064453125,
+   "total": 1.5042164325714111,
+   "answer": "The sign says \"OPEN 24 HOURS.\""
+  },
+  {
+   "id": "describe",
+   "ok": true,
+   "ttft": 1.310683250427246,
+   "total": 2.354607582092285,
+   "answer": "The scene shows a simple, minimalist setup with a red square on the left and a blue circle on the right, both set against a plain light gray background. The sha"
+  },
+  {
+   "id": "teach",
+   "ok": true,
+   "ttft": 1.3041279315948486,
+   "total": 1.4829468727111816,
+   "answer": "The green triangle is called a Zorp."
+  },
+  {
+   "id": "detect_all",
+   "ok": true,
+   "mean_iou": 0.9637507646733394,
+   "total": 4.62199854850769,
+   "answer": "3 boxes, IoU [0.97, 0.94, 0.98]"
+  },
+  {
+   "id": "detect_find_red",
+   "ok": true,
+   "mean_iou": 0.9674981103552532,
+   "total": 1.2636699676513672,
+   "answer": "1 boxes, IoU [0.97]"
+  },
+  {
+   "id": "detect_find_blue",
+   "ok": true,
+   "mean_iou": 0.9441849028768133,
+   "total": 1.2525672912597656,
+   "answer": "1 boxes, IoU [0.94]"
+  }
+ ]
+}

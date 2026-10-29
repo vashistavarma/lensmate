@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="system-ui, Segoe UI, sans-serif">
+<defs>
+  <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#4fd1c5"/></marker>
+  <style>.t{fill:#e6e9ef}.m{fill:#8b93a1;font-size:20px}.h{font-size:26px;font-weight:700}.b{font-size:22px}
+  .box{fill:#171b22;stroke:#2d3440;stroke-width:2;rx:16}.acc{stroke:#4fd1c5}.l{stroke:#4fd1c5;stroke-width:3;fill:none;marker-end:url(#a)}</style>
+</defs>
+<rect width="1600" height="900" fill="#0e1116"/>
+<text x="60" y="80" class="t" font-size="44" font-weight="800">Lens<tspan fill="#4fd1c5">Mate</tspan> · Mixed Reality chatbot</text>
+<text x="60" y="120" class="m">Webcam passthrough + voice + a local vision-language model. No headset, no paid API.</text>
+
+<!-- inputs -->
+<rect x="60" y="190" width="330" height="560" class="box"/>
+<text x="90" y="240" class="t h">INPUTS</text>
+<text x="90" y="300" class="t b">📷  Webcam frame</text><text x="90" y="330" class="m">resized to 1204×672</text>
+<text x="90" y="400" class="t b">🎤  Speech</text><text x="90" y="430" class="m">push-to-talk, Web Speech API</text>
+<text x="90" y="500" class="t b">⌨  Text + commands</text><text x="90" y="530" class="m">find · label · remember · forget</text>
+<text x="90" y="600" class="t b">🎛  Mode</text><text x="90" y="630" class="m">Chat · Explain · Describe · Read</text>
+<text x="90" y="700" class="t b">🧠  Taught facts</text><text x="90" y="730" class="m">saved in the browser</text>
+
+<!-- browser -->
+<rect x="470" y="190" width="660" height="560" class="box acc"/>
+<text x="500" y="240" class="t h">BROWSER (Chrome)</text>
+<rect x="500" y="270" width="600" height="90" class="box"/><text x="525" y="308" class="t b">Camera view</text><text x="525" y="340" class="m">live &lt;video&gt; = the “passthrough” layer</text>
+<rect x="500" y="380" width="600" height="90" class="box"/><text x="525" y="418" class="t b">Spatial overlay</text><text x="525" y="450" class="m">neon boxes + name tags drawn from model coordinates</text>
+<rect x="500" y="490" width="600" height="90" class="box"/><text x="525" y="528" class="t b">Three.js companion</text><text x="525" y="560" class="m">idle · listening · thinking · speaking · flies to objects</text>
+<rect x="500" y="600" width="600" height="110" class="box"/><text x="525" y="638" class="t b">Voice + chat</text><text x="525" y="670" class="m">streams the answer, speaks it sentence by sentence,</text><text x="525" y="695" class="m">cuts off when you talk</text>
+
+<!-- server -->
+<rect x="1210" y="190" width="330" height="250" class="box"/>
+<text x="1240" y="240" class="t h">NODE SERVER</text>
+<text x="1240" y="290" class="t b">/api/chat  (stream)</text><text x="1240" y="330" class="t b">/api/detect (boxes)</text>
+<text x="1240" y="375" class="m">prompts · modes · facts</text><text x="1240" y="405" class="m">zero dependencies</text>
+
+<!-- model -->
+<rect x="1210" y="500" width="330" height="250" class="box acc"/>
+<text x="1240" y="550" class="t h">OLLAMA · LOCAL GPU</text>
+<text x="1240" y="600" class="t b">Qwen2.5-VL 7B</text><text x="1240" y="640" class="m">vision + language</text><text x="1240" y="670" class="m">grounding (bounding boxes)</text><text x="1240" y="700" class="m">runs on an 8 GB laptop GPU</text>
+
+<path class="l" d="M390 470 H470"/>
+<path class="l" d="M1130 315 H1210"/>
+<path class="l" d="M1375 440 V500"/>
+<path class="l" d="M1210 690 H1160 V640 H1130" opacity="0"/>
+<text x="1133" y="302" class="m" font-size="14">frame+text</text>
+<text x="1390" y="478" class="m" font-size="16">image + prompt</text>
+
+<text x="60" y="820" class="t b">Calibrated grounding: frames sent at exactly 1204×672 → box coordinates map 1:1 (mean IoU 0.96).</text>
+<text x="60" y="855" class="m">Replies stream back token by token · ~1.3 s to first token · labels are pinned (not tracked) and auto-clear after 15 s</text>
+</svg>

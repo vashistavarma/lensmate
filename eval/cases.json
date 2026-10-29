@@ -1,0 +1,123 @@
+[
+ {
+  "id": "colour",
+  "type": "chat",
+  "image": "images/colour.jpg",
+  "question": "What colour is the circle? One word.",
+  "expect_any": [
+   "blue"
+  ]
+ },
+ {
+  "id": "count",
+  "type": "chat",
+  "image": "images/count.jpg",
+  "question": "How many red squares are there? Answer with a number.",
+  "expect_any": [
+   "3",
+   "three"
+  ]
+ },
+ {
+  "id": "read",
+  "type": "chat",
+  "mode": "read",
+  "image": "images/read.jpg",
+  "question": "What does the sign say?",
+  "expect_all": [
+   "open",
+   "24"
+  ]
+ },
+ {
+  "id": "describe",
+  "type": "chat",
+  "mode": "describe",
+  "image": "images/describe.jpg",
+  "question": "Describe the scene.",
+  "expect_all": [
+   "red",
+   "blue"
+  ]
+ },
+ {
+  "id": "teach",
+  "type": "chat",
+  "image": "images/teach.jpg",
+  "facts": [
+   "the green triangle is called a Zorp"
+  ],
+  "question": "What is the green triangle called?",
+  "expect_any": [
+   "zorp"
+  ]
+ },
+ {
+  "id": "detect_all",
+  "type": "detect",
+  "image": "images/shapes.jpg",
+  "targets": [
+   {
+    "label": "red",
+    "box": [
+     120,
+     330,
+     360,
+     570
+    ]
+   },
+   {
+    "label": "blue",
+    "box": [
+     840,
+     80,
+     1080,
+     320
+    ]
+   },
+   {
+    "label": "green",
+    "box": [
+     480,
+     100,
+     720,
+     340
+    ]
+   }
+  ]
+ },
+ {
+  "id": "detect_find_red",
+  "type": "detect",
+  "image": "images/shapes.jpg",
+  "query": "the red square",
+  "targets": [
+   {
+    "label": "red",
+    "box": [
+     120,
+     330,
+     360,
+     570
+    ]
+   }
+  ]
+ },
+ {
+  "id": "detect_find_blue",
+  "type": "detect",
+  "image": "images/shapes.jpg",
+  "query": "the blue circle",
+  "targets": [
+   {
+    "label": "blue",
+    "box": [
+     840,
+     80,
+     1080,
+     320
+    ]
+   }
+  ]
+ }
+]
