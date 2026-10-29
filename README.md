@@ -75,6 +75,8 @@ python3 eval/real_eval.py run                    # asks "What is this object?", 
 ```
 Results from this run belong in the table above once collected. With ~25 images the accuracy is indicative, not precise.
 
+**Preliminary result (one object, 4 photos of a mecanum wheel):** unaided recognition **0/4**: the model described real features ("yellow and black", "gear-like", "roller") but never named it. With the taught fact *"this is a mecanum wheel"* it answered correctly **4/4**, though this is an easy test because the name is supplied, and its follow-up explanation was partly off (it called the wheel a "caster wheel"). Teach-me fixes *naming*, not the model's *knowledge* about the object.
+
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
 - In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
