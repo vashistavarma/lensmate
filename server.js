@@ -131,7 +131,7 @@ async function detect(req, res) {
 
 // Service status for the UI lights: is the vision model installed in Ollama, is the speech service up?
 async function health(res) {
-  const j = { model: MODEL, think: false, vision: false, speech: false };
+  const j = { model: MODEL, vision: false, speech: false };
   try {
     const t = await (await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(1500) })).json();
     j.vision = (t.models || []).some(m => m.name === MODEL || m.name === MODEL + ':latest');
