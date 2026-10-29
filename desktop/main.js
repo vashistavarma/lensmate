@@ -33,13 +33,16 @@ ipcMain.handle('pull', async e => { // download the vision model through Ollama,
   const res = await fetch(`${OLLAMA}/api/pull`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: MODEL, stream: true }) });
   if (!res.ok) throw new Error('Ollama returned ' + res.status);
   const dec = new TextDecoder(); let buf = '';
+  const layers = {}; // Ollama downloads a model in several pieces: add them up into one overall progress
   for await (const chunk of res.body) {
     buf += dec.decode(chunk, { stream: true });
     const lines = buf.split('\n'); buf = lines.pop();
     for (const l of lines.filter(Boolean)) {
       const j = JSON.parse(l);
       if (j.error) throw new Error(j.error);
-      e.sender.send('pull-progress', { status: j.status, total: j.total || 0, completed: j.completed || 0 });
+      if (j.digest) layers[j.digest] = { total: j.total || 0, completed: j.completed || 0 };
+      const all = Object.values(layers);
+      e.sender.send('pull-progress', { status: j.status, total: all.reduce((n, x) => n + x.total, 0), completed: all.reduce((n, x) => n + x.completed, 0) });
     }
   }
   return true;
