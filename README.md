@@ -44,6 +44,8 @@ The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic**
 
 Options (environment variables): `PORT` (3000), `HOST` (default `127.0.0.1`: camera frames and your GPU are not exposed to the network), `MODEL` (`qwen2.5vl:7b`), `GROUND` (`pixel`, or `norm1000` for Qwen3-VL), `OLLAMA_URL`, `STT_URL`; for the speech service `WHISPER_MODEL` (`small.en`) and `STT_PORT` (3001). The server answers malformed requests with 400/413 errors instead of crashing, and stops generating if the browser disconnects.
 
+**Desktop app (Linux tested):** instead of running the server yourself, install the packaged app: an AppImage or `.deb` with a first-run screen that checks Ollama and downloads the model. It still needs Ollama and a ~8 GB GPU. Windows and macOS installers are built by CI but untested. See [desktop/README.md](desktop/README.md).
+
 ## Things to say or do
 
 | Say / do | What happens |
@@ -129,6 +131,7 @@ public/actions.js    rolling frame buffer, "what am I doing?" and "record"
 public/avatar.js     Three.js companion
 public/ui.js         modes, teach-me memory, memory panel, chips, service lights
 public/sessions.js   chat history
+desktop/             Electron shell, setup screen and installer build (see desktop/README.md)
 eval/                benchmarks, unit tests, browser tests, smoke test
 docs/                architecture diagram, design notes, live-demo runbook, LinkedIn post kit, LensMate_presentation.pptx (10-minute deck with speaker notes)
 ```

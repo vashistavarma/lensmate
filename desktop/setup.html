@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<title>LensMate setup</title>
+<style>
+  :root { --bg:#0e1116; --panel:#171b22; --accent:#4fd1c5; --text:#e6e9ef; --muted:#8b93a1; --line:#2d3440; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); font:16px system-ui, sans-serif; }
+  main { width:min(560px, 92vw); background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:32px; }
+  h1 { margin:0 0 4px; font-size:30px; } h1 span { color:var(--accent); }
+  p { color:var(--muted); margin:0 0 22px; }
+  .row { display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--line); }
+  .dot { width:12px; height:12px; border-radius:50%; background:#718096; flex:none; }
+  .dot.ok { background:#68d391; } .dot.bad { background:#f56565; } .dot.wait { background:#f6ad55; }
+  .row small { display:block; color:var(--muted); }
+  .grow { flex:1; }
+  button { padding:9px 16px; border:0; border-radius:8px; background:var(--accent); color:#06201d; font-weight:600; font-size:15px; cursor:pointer; }
+  button.ghost { background:#24303a; color:var(--text); }
+  button:disabled { opacity:.5; cursor:default; }
+  .bar { height:10px; border-radius:6px; background:#0e1116; border:1px solid var(--line); overflow:hidden; margin-top:8px; display:none; }
+  .bar div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  #msg { margin-top:18px; color:var(--muted); font-size:14px; min-height:20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1><span>Lens</span>Mate</h1>
+  <p>A mixed-reality chatbot that runs on your laptop. A quick one-time setup, then it opens.</p>
+  <div class="row"><span id="d1" class="dot wait"></span><div class="grow"><b>Ollama</b><small id="s1">Checking…</small></div><button id="b1" class="ghost" style="display:none">Get Ollama</button></div>
+  <div class="row"><span id="d2" class="dot wait"></span><div class="grow"><b>Vision model</b><small id="s2">Checking…</small><div class="bar" id="bar"><div id="fill"></div></div></div><button id="b2" style="display:none">Download</button></div>
+  <div class="row"><div class="grow"><small>Needs a GPU with about 8 GB of memory (or an Apple Silicon Mac). Camera and microphone stay on this computer.</small></div><button id="recheck" class="ghost">Check again</button></div>
+  <div id="msg"></div>
+</main>
+<script src="setup.js"></script>
+</body>
+</html>

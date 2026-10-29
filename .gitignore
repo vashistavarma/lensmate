@@ -4,3 +4,7 @@ node_modules/
 eval/real/
 .venv/
 __pycache__/
+desktop/node_modules/
+desktop/dist/
+desktop/server/
+.~lock.*

@@ -1,0 +1,59 @@
+{
+  "name": "lensmate-desktop",
+  "productName": "LensMate",
+  "version": "0.1.0",
+  "description": "A mixed-reality chatbot that runs on your laptop",
+  "main": "main.js",
+  "author": "vashistavarma",
+  "license": "MIT",
+  "scripts": {
+    "sync": "node scripts/sync.js",
+    "start": "npm run sync && electron .",
+    "start:linux": "npm run sync && electron . --no-sandbox",
+    "dist": "npm run sync && electron-builder"
+  },
+  "build": {
+    "appId": "com.vashistavarma.lensmate",
+    "productName": "LensMate",
+    "files": [
+      "main.js",
+      "preload.js",
+      "setup.html",
+      "setup.js",
+      "server/**/*",
+      "package.json"
+    ],
+    "artifactName": "LensMate-${version}-${os}-${arch}.${ext}",
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "maintainer": "vashistavarma"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "extendInfo": {
+        "NSCameraUsageDescription": "LensMate uses the camera to see what you point it at. Video stays on this computer.",
+        "NSMicrophoneUsageDescription": "LensMate uses the microphone for voice commands."
+      }
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
+  },
+  "homepage": "https://github.com/vashistavarma/lensmate"
+}

@@ -25,7 +25,7 @@ window.onBotText = (text, done) => {
 };
 
 // --- Speech in ---
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SR = window.lensmateDesktop ? null : (window.SpeechRecognition || window.webkitSpeechRecognition); // desktop app: no cloud speech
 let offline = !SR; // no Web Speech API (e.g. Firefox): offline engine is the only option
 try { const v = localStorage.getItem('lensmate.offline'); if (SR && v !== null) offline = v === '1'; } catch {}
 offlineBox.checked = offline;
@@ -85,7 +85,10 @@ async function transcribe() {
     const text = (j.text || '').trim();
     statusEl.textContent = `heard in ${((performance.now() - t0) / 1000).toFixed(1)}s (offline)`;
     if (text) window.lensAsk(text); else { statusEl.textContent = 'did not catch that'; setState('idle'); }
-  } catch (e) { statusEl.textContent = 'offline mic: ' + e.message; setState('idle'); }
+  } catch (e) {
+    statusEl.textContent = /not running|not available/i.test(e.message) ? 'Voice needs the optional speech add-on: you can type instead' : 'offline mic: ' + e.message;
+    setState('idle');
+  }
 }
 
 // --- push-to-talk wiring (button, or hold Space while the text box is not focused) ---
