@@ -16,6 +16,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
 | Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
+| Chat history | Like ChatGPT/Claude: **＋ New chat**, a **☰ list of past chats** to reopen, rename, delete or export (Markdown), and your current chat is restored after a reload. Saved in the browser (up to 50 chats); camera frames are not saved, and taught photos/facts are shared across chats. |
 | Click-to-ask | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | Teach me | Say *"remember that the red box is mine"* (text fact) or hold an object up and say *"this is an L298N motor driver"* / *"remember this as …"*: LensMate stores the words **and a reference photo**. Persisted in the browser; cleared with *"forget everything"*. |
 | Visual memory | On each question the server checks every taught photo against the live frame with a separate yes/no vision query (max 3, ~1.3 s each). Only verified matches are given to the model, so it recognises taught objects on sight without false matches. |
@@ -144,7 +145,8 @@ start.sh             starts the speech service and the web server
 public/spatial.js    boxes over video, find/label commands, tracking loop
 public/tracker.js    block-matching box tracker (pure functions, unit-tested)
 public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)
-public/ui.js         modes, teach-me memory, snapshot
+public/ui.js         modes, teach-me memory, memory panel, suggestion chips, service lights
+public/sessions.js   chat history (new / switch / rename / delete / export)
 eval/                benchmark generator, runner, results.json, tracker tests, real-object and visual-memory harnesses
 ```
 

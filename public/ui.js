@@ -86,7 +86,8 @@ factsEl.addEventListener('click', () => { memEl.hidden = !memEl.hidden; if (!mem
 showFacts();
 
 // --- First-run help: welcome message + one-tap suggestions ---
-addMsg("Hi, I'm LensMate. Hold 🎤 (or Space) to talk, or type. I can describe what the camera sees, label and follow objects, click any object to ask about it, and learn new ones: hold something up and say \"this is a …\".", 'bot');
+window.lensWelcome = () => { addMsg("Hi, I'm LensMate. Hold 🎤 (or Space) to talk, or type. I can describe what the camera sees, label and follow objects, click any object to ask about it, and learn new ones: hold something up and say \"this is a …\".", 'bot').classList.add('welcome'); }; // not saved into chat history
+window.lensWelcome();
 const chipsEl = document.getElementById('chips'), inputEl2 = document.getElementById('q');
 [['🔍 Label everything', 'label everything', true], ['What is this?', 'What is this?', true], ['Find…', 'find ', false],
  ['This is…', 'this is a ', false], ['What do you remember?', 'what do you remember?', true]].forEach(([label, text, send]) => {
