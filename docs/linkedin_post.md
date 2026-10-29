@@ -1,6 +1,6 @@
 # LinkedIn post kit
 
-Attach the **demo video** (upload natively). Use `architecture.png` as the second image or in the first comment. Fill the two placeholders: `[GITHUB LINK]`.
+Attach the **demo video** (upload natively). Use `architecture.png` as the second image or in the first comment. The repo link is already filled in.
 
 ## Main post (recommended)
 
@@ -27,13 +27,13 @@ What I learned by measuring instead of assuming:
 
 Honest limits: the real-object test is 8 photos of 2 objects, and action recognition is only tested on synthetic clips so far. Details, benchmarks and failures are in the repo.
 
-Code, architecture and evaluation: [GITHUB LINK]
+Code, architecture and evaluation: https://github.com/vashistavarma/lensmate
 
 #GenerativeAI #MixedReality #ComputerVision #LLM #Ollama #BuildInPublic
 
 ## Short version
 
-Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model on a laptop GPU. Labels follow objects on the live video, it describes what you're doing, and you can teach it new objects with one photo. Best lesson: my 7B model named niche hardware correctly 1 time in 8, until I taught it, and the boxes were 1.2× off until I matched the model's resize resolution. Demo + code: [GITHUB LINK] #GenerativeAI #MixedReality #Ollama
+Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model on a laptop GPU. Labels follow objects on the live video, it describes what you're doing, and you can teach it new objects with one photo. Best lesson: my 7B model named niche hardware correctly 1 time in 8, until I taught it, and the boxes were 1.2× off until I matched the model's resize resolution. Demo + code: https://github.com/vashistavarma/lensmate #GenerativeAI #MixedReality #Ollama
 
 ## First comment (post it right after)
 
@@ -46,7 +46,7 @@ Architecture diagram of LensMate: camera, voice, text and click inputs feed a br
 ## Posting checklist
 
 - [ ] Video is under 90 s, has captions, starts with the labels + companion on screen (no long intro)
-- [ ] `[GITHUB LINK]` filled in; repo is public and the README opens with the architecture image
+- [ ] `https://github.com/vashistavarma/lensmate` filled in; repo is public and the README opens with the architecture image
 - [ ] Numbers in the post match `README.md` (they were measured on the final code)
 - [ ] Post Tue-Thu morning; reply to every comment in the first hour
 - [ ] Mention your course or instructor only if they are fine with it
