@@ -8,7 +8,40 @@ const statusEl = document.getElementById('status');
 const inputEl = document.getElementById('q');
 const setState = s => window.dispatchEvent(new CustomEvent('lens-state', { detail: s }));
 
-// --- Speech out (browser TTS, runs locally) ---
+// --- Speech out ---
+// Preferred: a local neural voice (Piper) served by our own speech service, so replies are spoken without any cloud voice.
+// Fallback: the browser's voice (in Chrome that is an online Google voice, so the reply text would leave the computer).
+let localTts = false;
+fetch('/api/health').then(r => r.json()).then(h => { localTts = !!h.tts; }).catch(() => {});
+let audioCtx = null, ttsGen = 0, playChain = Promise.resolve(), ttsPending = 0, currentSrc = null;
+const actx = () => { audioCtx ||= new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; };
+
+function speakBrowser(text) { const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); }
+function speakLocal(text) {
+  const gen = ttsGen; ttsPending++;
+  // start synthesising now (in parallel with the previous sentence still playing); play in order
+  const audio = fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+    .then(r => { if (!r.ok) throw new Error('tts ' + r.status); return r.arrayBuffer(); }).then(b => actx().decodeAudioData(b));
+  audio.catch(() => {});
+  playChain = playChain.then(async () => {
+    try {
+      const buf = await audio;
+      if (gen !== ttsGen) return;                                   // interrupted while waiting
+      await new Promise(res => {
+        const src = actx().createBufferSource(); src.buffer = buf; src.connect(actx().destination); currentSrc = src;
+        src.onended = res; src.start();
+        setTimeout(res, buf.duration * 1000 + 800);               // watchdog: with no working audio output "ended" may never fire; never stall the queue
+      });
+    } catch { if (gen === ttsGen) speakBrowser(text); }              // the local voice failed: use the browser voice instead
+    finally { ttsPending = Math.max(0, ttsPending - 1); currentSrc = null; }
+  });
+}
+const speak = text => (localTts ? speakLocal(text) : speakBrowser(text));
+function stopSpeaking() { ttsGen++; try { currentSrc?.stop(); } catch {} speechSynthesis.cancel(); playChain = Promise.resolve(); ttsPending = 0; currentSrc = null; }
+window.lensStopSpeaking = stopSpeaking;
+window.lensTtsActive = () => ttsPending > 0 || !!currentSrc;      // the companion keeps "speaking" while audio plays
+speakBox.addEventListener('change', () => { if (!speakBox.checked) stopSpeaking(); });
+
 let spoken = 0;
 window.onBotText = (text, done) => {
   if (!speakBox.checked) return;
@@ -16,11 +49,7 @@ window.onBotText = (text, done) => {
   const pending = text.slice(spoken);
   const m = done ? [pending] : pending.match(/^[\s\S]*?[.!?](\s|$)/g); // complete sentences only
   const chunk = done ? pending : (m ? m.join('') : '');
-  if (chunk.trim()) {
-    const u = new SpeechSynthesisUtterance(chunk);
-    u.rate = 1.05;
-    speechSynthesis.speak(u);
-  }
+  if (chunk.trim()) speak(chunk);
   spoken = done ? 0 : spoken + chunk.length;
 };
 
@@ -95,7 +124,7 @@ async function transcribe() {
 function start() {
   if (pressed) return;
   pressed = true;
-  speechSynthesis.cancel(); spoken = 0;           // stop talking when the user speaks
+  stopSpeaking(); spoken = 0;                     // stop talking when the user speaks
   mic.classList.add('live'); setState('listening');
   statusEl.textContent = offline ? '🎤 recording (offline)…' : '🎤 listening…';
   if (offline) startOffline(); else startWeb();

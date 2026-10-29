@@ -1,68 +1,68 @@
 {
  "summary": {
   "chat_accuracy": "5/5",
-  "detect_pass_iou50": "0/3",
-  "detect_mean_iou": 0,
-  "chat_first_token_s_median": 0.87,
-  "chat_total_s_median": 0.98,
-  "detect_s_median": 0.06
+  "detect_pass_iou50": "3/3",
+  "detect_mean_iou": 0.96,
+  "chat_first_token_s_median": 1.18,
+  "chat_total_s_median": 1.34,
+  "detect_s_median": 1.96
  },
  "cases": [
   {
    "id": "colour",
    "ok": true,
-   "ttft": 0.04513120651245117,
-   "total": 0.06278777122497559,
+   "ttft": 0.041999101638793945,
+   "total": 0.07372283935546875,
    "answer": "Blue."
   },
   {
    "id": "count",
    "ok": true,
-   "ttft": 0.8743510246276855,
-   "total": 0.9423353672027588,
-   "answer": "There are three red squares."
+   "ttft": 1.1797592639923096,
+   "total": 1.1970117092132568,
+   "answer": "3"
   },
   {
    "id": "read",
    "ok": true,
-   "ttft": 0.8707249164581299,
-   "total": 1.004791259765625,
+   "ttft": 1.1773958206176758,
+   "total": 1.364867925643921,
    "answer": "The sign says \"OPEN 24 HOURS.\""
   },
   {
    "id": "describe",
    "ok": true,
-   "ttft": 0.8686513900756836,
-   "total": 1.124464750289917,
-   "answer": "The scene shows a white background with a red square on the left and a blue circle on the right."
+   "ttft": 1.1770374774932861,
+   "total": 2.0628159046173096,
+   "answer": "The scene shows a light gray background with two distinct shapes. On the left side, there is a red square, and on the right side, there is a blue circle. The sh"
   },
   {
    "id": "teach",
    "ok": true,
-   "ttft": 0.8676004409790039,
-   "total": 0.9769761562347412,
+   "ttft": 1.1934351921081543,
+   "total": 1.3446273803710938,
    "answer": "The green triangle is called a Zorp."
   },
   {
    "id": "detect_all",
-   "ok": false,
-   "mean_iou": 0,
-   "total": 0.8910481929779053,
-   "answer": "0 boxes, IoU [0, 0, 0]"
+   "ok": true,
+   "mean_iou": 0.9650148373575187,
+   "total": 1.5990142822265625,
+   "answer": "3 boxes, IoU [0.97, 0.95, 0.98]"
   },
   {
    "id": "detect_find_red",
-   "ok": false,
-   "mean_iou": 0,
-   "total": 0.06275749206542969,
-   "answer": "0 boxes, IoU [0]"
+   "ok": true,
+   "mean_iou": 0.9674981103552532,
+   "total": 1.9573819637298584,
+   "answer": "1 boxes, IoU [0.97]"
   },
   {
    "id": "detect_find_blue",
-   "ok": false,
-   "mean_iou": 0,
-   "total": 0.06043243408203125,
-   "answer": "0 boxes, IoU [0]"
+   "ok": true,
+   "mean_iou": 0.9480545131345053,
+   "total": 1.9865174293518066,
+   "answer": "1 boxes, IoU [0.95]"
   }
  ]
 }

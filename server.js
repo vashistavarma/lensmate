@@ -16,13 +16,16 @@ const SYSTEM = 'You are LensMate, a friendly mixed-reality assistant. You see th
   'describe the visible cues (shape, labels, text, parts) and give your best guess, marked as ' +
   'a guess. If the user tells you what something is, trust them and remember it.';
 
+// The short-answer rule applies to plain Chat only: Explain, Describe and Read set their own length.
+const SHORT_RULE = 'Answer in one or two short sentences (about 25 words) in plain speech, unless the user asks for detail; ';
+const systemFor = mode => (!MODES[mode] && mode !== 'chat') || mode === 'chat' ? SYSTEM : SYSTEM.replace(SHORT_RULE, 'Answer in plain speech; ');
 const KEEP = '2h'; // keep the model in GPU memory between questions: a cold start costs about 10 s
 const CTX = 8192; // one context size for every call: changing num_ctx between calls makes Ollama reload the model
 const MODES = {
   chat: '',
-  explain: ' MODE EXPLAIN: identify the main object, say what it is, what it does, and give one practical tip, in at most 4 sentences.',
-  describe: ' MODE DESCRIBE: describe the scene for someone who cannot see it, from left to right, in at most 4 sentences.',
-  read: ' MODE READ: read out any visible text exactly; if it is not English, also give an English translation. If there is no text, say so.',
+  explain: ' MODE EXPLAIN (this replaces the short-answer rule): identify the main object, say what it is, what it does, and give one practical tip, in at most 4 sentences.',
+  describe: ' MODE DESCRIBE (this replaces the short-answer rule): describe the scene for someone who cannot see it, from left to right, mentioning positions and colours, in at most 4 sentences.',
+  read: ' MODE READ (this replaces the short-answer rule): read out any visible text exactly; if it is not English, also give an English translation. If there is no text, say so.',
 };
 const factsText = facts => Array.isArray(facts) && facts.length
   ? ' Facts taught by the user (trust them over your own guess): ' + facts.slice(-10).map(f => String(f).slice(0, 200)).join('; ') + '.'
@@ -110,7 +113,7 @@ async function chat(req, res) {
       ...messages.slice(-4)]; // short history: the key frames already cost ~1k tokens each
     msgs[msgs.length - 1].images = fs.map(strip);
   } else {
-    msgs = [{ role: 'system', content: SYSTEM + (MODES[mode] || '') + factsText(facts) }, ...messages];
+    msgs = [{ role: 'system', content: systemFor(mode) + (MODES[mode] || '') + factsText(facts) }, ...messages];
     if (image) msgs[msgs.length - 1].images = [strip(image)];
   }
   const ac = new AbortController();           // stop generating if the browser goes away (e.g. new chat, closed tab)
@@ -172,13 +175,27 @@ async function detect(req, res) {
 
 // Service status for the UI lights: is the vision model installed in Ollama, is the speech service up?
 async function health(res) {
-  const j = { model: MODEL, vision: false, speech: false };
+  const j = { model: MODEL, vision: false, speech: false, tts: false };
   try {
     const t = await (await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(1500) })).json();
     j.vision = (t.models || []).some(m => m.name === MODEL || m.name === MODEL + ':latest');
   } catch {}
-  try { j.speech = (await fetch(`${STT}/`, { signal: AbortSignal.timeout(1500) })).ok; } catch {}
+  try {
+    const r = await fetch(`${STT}/`, { signal: AbortSignal.timeout(1500) });
+    j.speech = r.ok;
+    try { j.tts = !!(await r.json()).tts; } catch {}   // is a local voice installed?
+  } catch {}
   res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j));
+}
+
+// Local text-to-speech: the speech service turns a sentence into WAV audio (Piper), so replies are spoken without any cloud voice.
+async function tts(req, res) {
+  const body = await readBody(req, 1e6);
+  try {
+    const r = await fetch(`${STT}/tts`, { method: 'POST', body });
+    res.writeHead(r.status, { 'Content-Type': r.headers.get('content-type') || 'application/octet-stream' });
+    res.end(Buffer.from(await r.arrayBuffer()));
+  } catch (e) { fail(res, 502, 'Local voice is not running: ' + e.message); }
 }
 
 // Offline speech-to-text: forward the recorded audio to stt_server.py (faster-whisper).
@@ -196,6 +213,7 @@ async function stt(req, res) {
 async function route(req, res) {
   if (req.method === 'GET' && req.url === '/api/health') return health(res);
   if (req.method === 'POST' && req.url.split('?')[0] === '/api/stt') return stt(req, res);
+  if (req.method === 'POST' && req.url === '/api/tts') return tts(req, res);
   if (req.method === 'POST' && req.url === '/api/match') return match(req, res);
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);

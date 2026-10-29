@@ -64,7 +64,7 @@ const clock = new THREE.Clock();
 function frame() {
   const t = clock.getElapsedTime(), dt = Math.min(clock.getDelta() || 0.016, 0.05);
   const now = performance.now();
-  if (state === 'speaking' && !speechSynthesis.speaking && now - lastText > 900) state = 'idle';
+  if (state === 'speaking' && !speechSynthesis.speaking && !window.lensTtsActive?.() && now - lastText > 900) state = 'idle';
 
   // Target position: next to the labelled object when pointing, otherwise home (bottom-right).
   let tx = W - R * 2.2, ty = H - R * 2.2;

@@ -36,7 +36,7 @@
   }
 
   function show(session) { // replace the visible chat + model context with a session
-    speechSynthesis.cancel();
+    (window.lensStopSpeaking || (() => speechSynthesis.cancel()))();
     cur = session;
     log.replaceChildren(); history.length = 0; history.push(...cur.messages);
     cur.ui.forEach(m => addMsg(m.text, m.cls));
