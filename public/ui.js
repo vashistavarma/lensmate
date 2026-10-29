@@ -89,7 +89,7 @@ showFacts();
 window.lensWelcome = () => { addMsg("Hi, I'm LensMate. Hold 🎤 (or Space) to talk, or type. I can describe what the camera sees, label and follow objects, click any object to ask about it, and learn new ones: hold something up and say \"this is a …\".", 'bot').classList.add('welcome'); }; // not saved into chat history
 window.lensWelcome();
 const chipsEl = document.getElementById('chips'), inputEl2 = document.getElementById('q');
-[['🔍 Label everything', 'label everything', true], ['What is this?', 'What is this?', true], ['Find…', 'find ', false],
+[['🔍 Label everything', 'label everything', true], ['🎬 What am I doing?', 'what am I doing?', true], ['⏺ Record 5 s', 'record for 5 seconds', true], ['What is this?', 'What is this?', true], ['Find…', 'find ', false],
  ['This is…', 'this is a ', false], ['What do you remember?', 'what do you remember?', true]].forEach(([label, text, send]) => {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label;
   b.onclick = () => { if (send) window.lensAsk(text); else { inputEl2.value = text; inputEl2.focus(); } };

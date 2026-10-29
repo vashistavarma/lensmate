@@ -13,6 +13,7 @@ For my Introduction to Generative AI course I wanted to see how far a *local* vi
 🛸 A 3D companion floats over the scene and flies to whatever it's talking about
 🧠 Show it an object, say "this is a motor driver", and it recognises it next time
 🔒 Optional fully offline speech (Whisper on the CPU, ~0.8 s per command)
+🎬 Ask "what am I doing?" and it describes your action (motion is measured in code, the model names the thing)
 💬 Saved chats, like ChatGPT
 
 How it works: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU) for vision + language, a tiny zero-dependency Node server, and a browser front end with Three.js and the Web Speech API.

@@ -30,14 +30,16 @@ function addMsg(text, cls) {
 async function ask(question, imageOverride) {
   addMsg(question, 'user');
   window.dispatchEvent(new CustomEvent('lens-state', { detail: 'thinking' }));
-  if (await window.lensIntent?.(question)) return;
+  const handled = await window.lensIntent?.(question); // true = fully handled; an object = action result to send as key frames
+  if (handled === true) return;
+  const extra = handled && typeof handled === 'object' ? handled : {};
   history.push({ role: 'user', content: question });
   const bubble = addMsg('…', 'bot');
   let answer = '';
   const t0 = performance.now();
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, image: imageOverride || grabFrame(), mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: window.lensRefs?.() }),
+    body: JSON.stringify({ messages: history, image: extra.frames ? undefined : (imageOverride || grabFrame()), frames: extra.frames, motion: extra.motion, seconds: extra.seconds, mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: window.lensRefs?.() }),
   });
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = '';

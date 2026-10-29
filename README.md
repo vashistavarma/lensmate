@@ -16,6 +16,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
 | Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
+| Actions + recording | Ask *"what am I doing?"* (looks at the last ~4 s from a rolling in-browser buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion (direction, location, back-and-forth swings like waving) is **measured in code**; the model gets 2-3 key frames plus that measurement and names what is moving. |
 | Chat history | Like ChatGPT/Claude: **＋ New chat**, a **☰ list of past chats** to reopen, rename, delete or export (Markdown), and your current chat is restored after a reload. Saved in the browser (up to 50 chats); camera frames are not saved, and taught photos/facts are shared across chats. |
 | Click-to-ask | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | Teach me | Say *"remember that the red box is mine"* (text fact) or hold an object up and say *"this is an L298N motor driver"* / *"remember this as …"*: LensMate stores the words **and a reference photo**. Persisted in the browser; cleared with *"forget everything"*. |
@@ -36,6 +37,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 
 Key design points:
 - **Grounding calibration:** Qwen2.5-VL returns boxes in the pixel space of the image *after Ollama resizes it*. Smaller images are upscaled, so coordinates come back about 1.2× too large. Sending frames at exactly **1204×672** gives 1:1 coordinates, which I verified empirically (mean IoU 0.96 on the benchmark).
+- **Action design:** I first tried feeding the model a frame sequence (a 3×3 contact sheet, or 5 separate images). Ollama passes images to Qwen2.5-VL as independent pictures with no sense of time, so it called left-to-right motion "circular rotation" and said "stationary" for a moving ball (and took 18 s). Comparing only the first and last frame worked (5/6 synthetic cases, 2.6 s), so the final design is hybrid: `motion.js` measures the motion from the whole clip, and the model sees start / peak-movement / end frames plus the measurement.
 - **Visual memory design:** putting reference photos straight into the prompt recognised the objects but *also claimed matches on unrelated images* (4/4 false positives). Verifying each reference with its own yes/no question fixed that. The prototype got 19/20 pair decisions right with no false positives.
 - **Tracking:** `tracker.js` matches each box's patch between small grayscale frames (sum of absolute differences, ±6 px per step). A box is dropped after 8 consecutive bad matches. Unit tests (`node eval/test_tracker.js`) and a headless-Chrome integration test (`eval/track_page.html`: box within 2 px after an 80 px pan) cover it.
 - **Cheap context:** only the newest user turn carries an image. History is text-only.
@@ -109,6 +111,16 @@ The model describes real features but mostly cannot name niche hardware: it call
 
 Caveat: the reference and test photos come from the same session, room, and lighting, so 5/6 is optimistic for the real world, and the metric counts the taught name appearing in the answer. Cost: about 1.3 s per taught photo checked before each answer.
 
+**Action recognition (`eval/action_eval.py`, `eval/test_motion.js`):** headless Chrome with a synthetic camera (a red ball with known motion next to a static blue square), the real record / "what am I doing?" commands, the motion analysis and the model.
+
+| Scenario | Result |
+|---|---|
+| Ball moves right / moves up / waves back and forth / sits still (record 4 s) | **4/4**, answer ~3-5 s after the clip ends, clip saved each time |
+| Same via instant "what am I doing?" (right, wave) | **2/2** |
+| Motion-analysis unit tests (directions, waving, noise, camera pan, lighting ramp) | **10/10** |
+
+Caveats: synthetic scenes only. Real webcams have noise, auto-exposure and clutter, and the thresholds were tuned on synthetic clips. The motion measure tracks one blob (several moving things merge into one), cannot tell *what* gesture a person makes beyond direction and repetition, and the model sometimes repeats the measurement wording in its answer. The 12-second frame buffer lives only in the browser's memory and is sent to the model only when you ask.
+
 **Offline speech (`eval/stt_eval.py`):** 10 command sentences synthesised with Piper, encoded as WebM/Opus like the browser sends, transcribed via `/api/stt`.
 
 | Setup | Word error rate | Median latency |
@@ -145,6 +157,8 @@ start.sh             starts the speech service and the web server
 public/spatial.js    boxes over video, find/label commands, tracking loop
 public/tracker.js    block-matching box tracker (pure functions, unit-tested)
 public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)
+public/motion.js     motion measurement for the action feature (pure, unit-tested)
+public/actions.js    rolling frame buffer, "what am I doing?" and "record" commands
 public/ui.js         modes, teach-me memory, memory panel, suggestion chips, service lights
 public/sessions.js   chat history (new / switch / rename / delete / export)
 eval/                benchmark generator, runner, results.json, tracker tests, real-object and visual-memory harnesses

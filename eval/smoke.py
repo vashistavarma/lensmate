@@ -24,7 +24,10 @@ def detect():
 def tracker():
     r = subprocess.run(['node', os.path.join(HERE, 'test_tracker.js')], capture_output=True, text=True)
     return r.returncode == 0, r.stdout.count('PASS') and f"{r.stdout.count('PASS')} unit tests"
+def motion():
+    r = subprocess.run(['node', os.path.join(HERE, 'test_motion.js')], capture_output=True, text=True)
+    return r.returncode == 0, f"{r.stdout.count('PASS')} unit tests"
 check('services health', health); check('vision chat (colour question)', chat)
-check('grounding (find the red square)', detect); check('tracker unit tests', tracker)
+check('grounding (find the red square)', detect); check('tracker unit tests', tracker); check('motion-analysis unit tests', motion)
 print('\nALL GOOD, ready to demo' if all(results) else f'\n{results.count(False)} check(s) FAILED')
 sys.exit(0 if all(results) else 1)

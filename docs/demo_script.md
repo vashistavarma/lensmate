@@ -12,6 +12,7 @@
 | 0:42 | Show the niche item. Ask "what is this?" (it may guess wrong, keep it: honesty is a strength). Then say: **"this is a [real name]"** | "Got it, I'll remember" + 🧠 1 taught |
 | 0:55 | Ask "what is this?" again in **🎓 Explain** mode | Correct name + what it does |
 | 1:05 | Switch to **📖 Read**, hold up text in another language | Reads and translates |
+| 1:03 | Wave, then ask **"what am I doing?"** (or say "record for 5 seconds") | It describes the action; a clip is saved |
 | 1:08 | Open ☰ and show the saved chats, then ＋ New chat | Chat history like ChatGPT |
 | 1:12 | Say: "Local Qwen2.5-VL, Three.js, no headset, no API costs." | Orb waves off, end card (architecture.png) |
 

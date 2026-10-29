@@ -16,6 +16,7 @@ const SYSTEM = 'You are LensMate, a friendly mixed-reality assistant. You see th
   'describe the visible cues (shape, labels, text, parts) and give your best guess, marked as ' +
   'a guess. If the user tells you what something is, trust them and remember it.';
 
+const CTX = 8192; // one context size for every call: changing num_ctx between calls makes Ollama reload the model
 const MODES = {
   chat: '',
   explain: ' MODE EXPLAIN: identify the main object, say what it is, what it does, and give one practical tip, in at most 4 sentences.',
@@ -48,7 +49,7 @@ async function matchRefs(refs, image) {
       `Is a ${name} of the same kind as in image 1 clearly visible in image 2? Answer only YES or NO.`;
     const j = await (await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4 },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4, num_ctx: CTX },
         messages: [{ role: 'user', content: prompt, images: [strip(r.image), strip(image)] }] }),
     })).json();
     if (/^\s*yes/i.test(j.message?.content || '')) hits.push(name);
@@ -59,21 +60,33 @@ async function matchRefs(refs, image) {
 async function chat(req, res) {
   let body = '';
   for await (const c of req) body += c;
-  const { messages = [], image, mode = 'chat', facts = [], refs = [] } = JSON.parse(body);
+  const { messages = [], image, mode = 'chat', facts = [], refs = [], frames = [], motion = '', seconds = 0 } = JSON.parse(body);
   // Attach the current camera frame to the latest user message only (keeps context small).
-  const msgs = [{ role: 'system', content: SYSTEM + (MODES[mode] || '') + factsText(facts) }, ...messages];
   const strip = d => d.replace(/^data:image\/\w+;base64,/, '');
-  if (image) msgs[msgs.length - 1].images = [strip(image)];
+  let msgs;
+  if (frames.length) {
+    // Action mode: the model cannot track motion across frames, so it gets 2-3 key frames plus motion measured in the browser.
+    const fs = frames.slice(0, 3);
+    const labels = fs.length === 3 ? 'first frame, peak-movement frame, last frame' : 'first frame, last frame';
+    msgs = [{ role: 'system', content: SYSTEM + factsText(facts) + ` ACTION MODE: the ${fs.length} attached images are key frames in time order (${labels}) from a ` +
+      `${Math.round(seconds) || 'few'}-second camera clip. ${String(motion).slice(0, 600)} Describe the action in one or two plain sentences: who or what is doing what, and how. ` +
+      'Trust the measured motion for direction and repetition, and use the images to say what the moving thing is. Describe it naturally: do not quote the measurement wording or mention areas or percentages. If no movement was measured, say that nothing is moving.' },
+      ...messages.slice(-4)]; // short history: the key frames already cost ~1k tokens each
+    msgs[msgs.length - 1].images = fs.map(strip);
+  } else {
+    msgs = [{ role: 'system', content: SYSTEM + (MODES[mode] || '') + factsText(facts) }, ...messages];
+    if (image) msgs[msgs.length - 1].images = [strip(image)];
+  }
   try {
     // Visual memory: verify each taught reference photo against the live frame (yes/no), then tell the
     // model only the verified names. Verifying first avoids false matches (see eval/visual_memory_eval.py).
-    const matched = image ? await matchRefs(refs, image) : [];
+    const matched = (image && !frames.length) ? await matchRefs(refs, image) : [];
     if (matched.length) msgs[0].content += ' Verified by comparing with photos the user taught you, the camera view contains: ' +
       matched.join(', ') + '. Use these exact names for those objects.';
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: '10m' }),
+      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: '10m', options: { num_ctx: CTX } }),
     });
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
     if (refs.length) res.write(JSON.stringify({ matched }) + '\n');
@@ -100,7 +113,7 @@ async function detect(req, res) {
   try {
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0 },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_ctx: CTX },
         messages: [{ role: 'user', content: prompt, images: [image.replace(/^data:image\/\w+;base64,/, '')] }] }),
     });
     const text = (await r.json()).message?.content || '';
