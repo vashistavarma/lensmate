@@ -109,3 +109,20 @@ async function pollHealth() {
   } catch { healthEl.textContent = 'server unreachable'; }
 }
 pollHealth(); setInterval(pollHealth, 5000);
+
+// --- Mirror view (selfie style), on by default. Only the picture on screen and the action frames are mirrored; frames sent for
+// chat, reading and detection stay true so text stays readable. Labels, clicks and left/right wording follow the mirrored view. ---
+const camEl = document.getElementById('cam'), mirrorBtn = document.getElementById('mirror');
+let mirrored = true;
+try { const v = localStorage.getItem('lensmate.mirror'); if (v !== null) mirrored = v === '1'; } catch {}
+window.lensMirror = () => mirrored;
+function applyMirror() {
+  camEl.classList.toggle('mirrored', mirrored); mirrorBtn.classList.toggle('on', mirrored);
+  mirrorBtn.title = mirrored ? 'Mirror view is on (click to turn off)' : 'Mirror view is off (click to turn on)';
+}
+mirrorBtn.addEventListener('click', () => {
+  mirrored = !mirrored;
+  try { localStorage.setItem('lensmate.mirror', mirrored ? '1' : '0'); } catch {}
+  applyMirror(); window.dispatchEvent(new CustomEvent('lens-mirror'));
+});
+applyMirror();

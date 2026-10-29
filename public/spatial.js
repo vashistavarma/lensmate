@@ -67,12 +67,13 @@ function drawBoxes(boxes) {
   if (overlay.width !== cw || overlay.height !== ch) { overlay.width = cw; overlay.height = ch; } // resizing clears the canvas
   const ctx = overlay.getContext('2d');
   const sx = overlay.width / DET_W, sy = overlay.height / DET_H;
+  const mir = !!window.lensMirror?.(); // mirrored view: boxes are in true-camera coordinates, flip them for the screen
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   ctx.lineWidth = 3 * devicePixelRatio;
   ctx.font = `${14 * devicePixelRatio}px system-ui`;
   boxes.forEach(({ label, box: [x1, y1, x2, y2] }, i) => {
     const color = `hsl(${(i * 67 + 170) % 360} 85% 60%)`;
-    const x = x1 * sx, y = y1 * sy, w = (x2 - x1) * sx, h = (y2 - y1) * sy;
+    const x = (mir ? DET_W - x2 : x1) * sx, y = y1 * sy, w = (x2 - x1) * sx, h = (y2 - y1) * sy;
     ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10 * devicePixelRatio;
     ctx.strokeRect(x, y, w, h);
     ctx.shadowBlur = 0;
@@ -83,7 +84,8 @@ function drawBoxes(boxes) {
   });
   // fly the companion next to the first labelled object (box centre-top, in CSS px)
   const [bx1, by1, bx2] = boxes[0].box;
-  window.dispatchEvent(new CustomEvent('lens-point', { detail: { x: ((bx1 + bx2) / 2) * sx / devicePixelRatio, y: by1 * sy / devicePixelRatio } }));
+  const bcx = (bx1 + bx2) / 2;
+  window.dispatchEvent(new CustomEvent('lens-point', { detail: { x: (mir ? DET_W - bcx : bcx) * sx / devicePixelRatio, y: by1 * sy / devicePixelRatio } }));
 }
 
 async function runDetect(query) {
@@ -139,5 +141,5 @@ wrapEl.addEventListener('click', e => {
   wrapEl.append(ring); setTimeout(() => ring.remove(), 1300);
   window.dispatchEvent(new CustomEvent('lens-point', { detail: { x: px, y: py } })); // companion flies to the click
   clearTimeout(clearTimer); clearTimer = setTimeout(() => window.dispatchEvent(new CustomEvent('lens-point', { detail: null })), 8000);
-  window.lensAsk('What is the object at the centre of this zoomed view? Name it specifically.', cropAround(px / r.width, py / r.height));
+  window.lensAsk('What is the object at the centre of this zoomed view? Name it specifically.', cropAround(window.lensMirror?.() ? 1 - px / r.width : px / r.width, py / r.height)); // the click is on the mirrored picture
 });

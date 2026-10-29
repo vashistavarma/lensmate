@@ -41,7 +41,8 @@ try:
     js = lambda e: call('Runtime.evaluate', expression=e, returnByValue=True)['result'].get('result', {}).get('value')
     call('Page.enable'); call('Page.addScriptToEvaluateOnNewDocument', source=CAMERA_JS)
     call('Page.navigate', url='http://localhost:3000/'); time.sleep(3)
-    js("localStorage.clear()"); call('Page.navigate', url='http://localhost:3000/'); time.sleep(3)
+    js("localStorage.clear(); localStorage.setItem('lensmate.mirror', '0')")  # these scenarios assume the un-mirrored view (see mirror_test.py)
+    call('Page.navigate', url='http://localhost:3000/'); time.sleep(3)
     passed = 0
     for name, words in SCENARIOS:
         js("document.getElementById('newchat').click()"); time.sleep(0.3)

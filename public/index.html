@@ -40,6 +40,8 @@
   #bar { display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; padding:8px 12px; border-bottom:1px solid #262c36; }
   #bar select { flex:1; min-width:0; padding:7px; border-radius:8px; border:1px solid #2d3440; background:#0e1116; color:var(--text); }
   #bar button { padding:6px 10px; }
+  #bar button.on { box-shadow:0 0 0 2px var(--accent) inset; }
+  #cam.mirrored { transform:scaleX(-1); }
   #bar #facts { background:#24303a; color:var(--text); font-weight:500; font-size:12px; white-space:nowrap; }
   #health { font-size:12px; color:var(--muted); white-space:nowrap; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin:0 3px 0 6px; background:#718096; }
@@ -74,6 +76,7 @@
       <option value="chat">💬 Chat</option><option value="explain">🎓 Explain</option>
       <option value="describe">👁 Describe</option><option value="read">📖 Read / translate</option>
     </select>
+    <button id="mirror" type="button" title="Mirror view">🪞</button>
     <button id="snap" type="button" title="Save the current frame as a JPEG (for the eval set)">📷</button>
     <button id="facts" type="button" title="What LensMate remembers (click to manage)">🧠</button>
     <span id="health" title="Service status"></span>

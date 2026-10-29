@@ -8,12 +8,17 @@ const aSmall = Object.assign(document.createElement('canvas'), { width: LensMoti
 const aBig = Object.assign(document.createElement('canvas'), { width: 640, height: 360 }).getContext('2d');
 setInterval(() => {
   if (document.hidden || !cam.videoWidth) return;
+  const mir = !!window.lensMirror?.();
+  aSmall.setTransform(mir ? -1 : 1, 0, 0, 1, mir ? LensMotion.W : 0, 0);
   aSmall.drawImage(cam, 0, 0, LensMotion.W, LensMotion.H);
   const gray = LensMotion.toGray(aSmall.getImageData(0, 0, LensMotion.W, LensMotion.H).data);
+  aBig.setTransform(mir ? -1 : 1, 0, 0, 1, mir ? 640 : 0, 0);
   aBig.drawImage(cam, 0, 0, 640, 360);
   abuf.push({ t: performance.now(), gray, jpg: aBig.canvas.toDataURL('image/jpeg', 0.7) });
   const cut = performance.now() - A_BUF_MS; while (abuf.length && abuf[0].t < cut) abuf.shift();
 }, A_STEP_MS);
+
+window.addEventListener('lens-mirror', () => { abuf.length = 0; }); // old frames have the other orientation
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const lensState = s => window.dispatchEvent(new CustomEvent('lens-state', { detail: s }));
