@@ -8,7 +8,7 @@ For my Introduction to Generative AI course I wanted to see how far a *local* vi
 
 🎥 Your webcam is the passthrough view
 🗣️ Talk to it (push-to-talk), and it answers out loud
-🔍 Say "find my keys" and it draws labels on the live video
+🔍 Say "find my keys" and it draws labels on the live video that stay on the object as you move
 🛸 A 3D companion floats over the scene and flies to whatever it's talking about
 🧠 Tell it "this is an L298N motor driver" and it remembers
 
@@ -17,7 +17,7 @@ How it works: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU) for vision + language, a
 Three things I learned:
 1️⃣ Grounding has a trap: the model's box coordinates are in the space of the image *after* Ollama resizes it. My boxes were ~1.2× too big until I sent frames at exactly 1204×672. After that, IoU hit 0.96.
 2️⃣ A 7B model doesn't know niche hardware. It missed a motor driver and a mecanum wheel. A simple "teach me" memory helps: in a controlled test on an invented object, the answer was "a Zorp" with the taught fact and "a triangle" without it.
-3️⃣ Honest evaluation matters: my benchmark is synthetic, so it proves the pipeline, not real-world accuracy. Labels are pinned to the screen, not tracked, which is the next thing to build.
+3️⃣ Honest evaluation matters: my benchmark is synthetic, so it proves the pipeline, not real-world accuracy. And a model that answers in 2 seconds returns boxes for a scene that has already moved, so I added a tiny CPU block-matching tracker that catches boxes up and follows them (within 2 px in a simulated 80 px pan).
 
 Median ~1.3 s to first token, fully offline vision and reasoning.
 

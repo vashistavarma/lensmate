@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8">
+<!-- Integration test: real spatial.js + tracker.js against a simulated camera whose scene slides right. -->
+<canvas id="cam" width="1204" height="672"></canvas><button id="scan"></button><canvas id="overlay" width="1204" height="672"></canvas>
+<script src="../public/tracker.js"></script>
+<script>
+const cam = document.getElementById('cam'); Object.defineProperty(cam, 'videoWidth', { value: 1204 });
+const status = {}, addMsg = () => ({}), history = [];
+document.getElementById('overlay'); // spatial.js looks this up itself
+let seed = 3; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+const tex = document.createElement('canvas'); tex.width = 2400; tex.height = 672; // wide textured world
+const tc = tex.getContext('2d');
+for (let i = 0; i < 3000; i++) { tc.fillStyle = `hsl(${rnd() * 360} 60% ${20 + rnd() * 60}%)`; tc.fillRect(rnd() * 2400, rnd() * 672, 10 + rnd() * 50, 10 + rnd() * 50); }
+let offset = 0;
+const paint = () => { cam.getContext('2d').drawImage(tex, offset, 0, 1204, 672, 0, 0, 1204, 672); };
+paint();
+</script>
+<script src="../public/spatial.js"></script>
+<script>
+const gray0 = grabGray();
+// object of interest = world region at x 500-700,y 250-450; the model "answered" late, after the scene moved 24 px
+const startBox = [500, 250, 700, 450];
+offset = 24; paint();                       // world moves left => object appears 24 px (DET) to the left
+startTracking([{ label: 'thing', box: startBox }], gray0);
+// then the camera keeps panning: 4 px per 50 ms for 1 s
+// tick() is driven by hand because headless virtual time does not fire rAF
+let n = 0, ts = 1000; const iv = setInterval(() => { offset += 4; paint(); ts += 50; tick(ts); if (++n === 20) { clearInterval(iv); setTimeout(report, 300); } }, 50);
+function report() {
+  const t = tracks[0];
+  const shown = t ? t.shown.map(v => v * S) : null;   // DET coords
+  const expected = [500 - 24 - 80, 250, 700 - 24 - 80, 450];  // total world shift = 24 + 20*4 = 104
+  document.title = JSON.stringify({ alive: !!t, shown, expected, errPx: shown ? Math.max(Math.abs(shown[0] - expected[0]), Math.abs(shown[1] - expected[1])) : null });
+}
+</script>

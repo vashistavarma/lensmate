@@ -13,6 +13,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | See and chat | Every question is sent with the current camera frame to a local vision-language model (Qwen2.5-VL 7B via Ollama). Replies stream in token by token. |
 | Talk | Push-to-talk speech input (Web Speech API) and spoken replies (browser TTS), sentence by sentence while the answer streams. |
 | Spatial labels | `find my keys`, `label everything`: the model returns bounding boxes (grounding), drawn as neon boxes over the video. |
+| Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
 | Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
 | Teach me | Say *"this is an L298N motor driver"* or *"remember that the red box is mine"*. The fact is injected into later prompts, persisted in the browser, and cleared with *"forget everything"*. |
@@ -32,6 +33,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 
 Key design points:
 - **Grounding calibration:** Qwen2.5-VL returns boxes in the pixel space of the image *after Ollama resizes it*. Smaller images are upscaled, so coordinates come back about 1.2× too large. Sending frames at exactly **1204×672** gives 1:1 coordinates, which I verified empirically (mean IoU 0.96 on the benchmark).
+- **Tracking:** `tracker.js` matches each box's patch between small grayscale frames (sum of absolute differences, ±6 px per step). A box is dropped after 8 consecutive bad matches. Unit tests (`node eval/test_tracker.js`) and a headless-Chrome integration test (`eval/track_page.html`: box within 2 px after an 80 px pan) cover it.
 - **Cheap context:** only the newest user turn carries an image. History is text-only.
 - **Event bus:** the avatar listens to small `lens-state` and `lens-point` browser events, so UI modules stay decoupled.
 
@@ -66,7 +68,7 @@ Results on the synthetic benchmark (8 cases, RTX 5060 Laptop 8 GB, Qwen2.5-VL 7B
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
 - In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
-- Labels are **pinned to the screen, not tracked**. They are cleared after 15 s because they go stale when the camera moves.
+- The tracker follows **translation only** (no scale or rotation), loses fast motion (more than about 24 px per frame step) or objects that leave the view, and ignores featureless patches. Tracking was tested on simulated camera motion, not yet on a live webcam. Labels auto-clear after 60 s.
 - Chrome's speech recognition sends audio to a cloud service. Vision and reasoning are fully local.
 - A webcam is not a headset. This is a "mixed reality" prototype (virtual companion and anchored labels over a live camera feed), not spatial mapping.
 
@@ -76,11 +78,12 @@ Results on the synthetic benchmark (8 cases, RTX 5060 Laptop 8 GB, Qwen2.5-VL 7B
 server.js            static server + /api/chat (streaming) + /api/detect (grounding), prompts and modes
 public/app.js        camera, frame capture, chat streaming
 public/voice.js      push-to-talk STT, sentence-level TTS
-public/spatial.js    boxes over video, find/label commands
+public/spatial.js    boxes over video, find/label commands, tracking loop
+public/tracker.js    block-matching box tracker (pure functions, unit-tested)
 public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)
 public/ui.js         modes, teach-me memory, snapshot
-eval/                benchmark generator, runner, results.json
+eval/                benchmark generator, runner, results.json, tracker tests
 ```
 
 ## Future work
-Object tracking so labels follow the camera, a larger or fine-tuned vision model, local Whisper for fully offline speech, a WebXR build for a Quest headset, and visual (not just textual) memory of taught objects.
+Tracking with scale and re-detection, a larger or fine-tuned vision model, local Whisper for fully offline speech, a WebXR build for a Quest headset, and visual (not just textual) memory of taught objects.
