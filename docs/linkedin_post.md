@@ -15,7 +15,7 @@ For my Introduction to Generative AI course I wanted to see how far a *local* vi
 
 How it works: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU) for vision + language, a tiny zero-dependency Node server, and a browser front end with Three.js and the Web Speech API.
 
-Three things I learned:
+Four things I learned:
 1️⃣ Grounding has a trap: the model's box coordinates are in the space of the image *after* Ollama resizes it. My boxes were ~1.2× too big until I sent frames at exactly 1204×672. After that, IoU hit 0.96.
 2️⃣ A 7B model doesn't know niche hardware. On my real photos it named a mecanum wheel 0/4 times and a motor driver 1/4. So I added visual memory: show it the object once and say "this is a motor driver". Recognition on held-out photos went to 5/6. My first version also claimed matches on unrelated images, so I added a separate yes/no verification per taught photo, and false matches dropped to 0/10.
 3️⃣ Honest evaluation matters: my benchmark is synthetic, so it proves the pipeline, not real-world accuracy. And a model that answers in 2 seconds returns boxes for a scene that has already moved, so I added a tiny CPU block-matching tracker that catches boxes up and follows them (within 2 px in a simulated 80 px pan).
