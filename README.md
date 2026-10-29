@@ -138,7 +138,7 @@ Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md)
 
 ## Privacy
 
-Vision and reasoning run locally. With the 🔒 offline mic ticked and the local Piper voice installed, nothing leaves your computer (`eval/local_only_test.py` checks that the page only ever talks to `localhost`); without the local voice, Chrome speaks replies with an online Google voice. Chats, taught photos and facts are stored in your browser's `localStorage` (never uploaded). The 12-second action buffer lives in browser memory and frames are sent to the local model only when you ask. Nothing is written to disk unless you click *Save clip* or *Export*. `eval/real/` (your own test photos) is git-ignored.
+Vision and reasoning run locally. With the 🔒 offline mic ticked and the local Piper voice installed, nothing leaves your computer (`eval/local_only_test.py` checks that the page only ever talks to `localhost`); without the local voice, Chrome speaks replies with an online Google voice. Chats, taught photos and facts are stored in your browser's `localStorage` (never uploaded). The 12-second action buffer lives in browser memory and frames go only to the local model (when you ask, and in the background to check taught objects). Nothing is written to disk unless you click *Save clip* or *Export*. `eval/real/` (your own test photos) is git-ignored.
 
 ## Project layout
 

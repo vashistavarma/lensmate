@@ -33,7 +33,7 @@
 <rect x="800" y="458" width="352" height="96" class="box"/><text x="818" y="494" class="t b">Chat history</text><text x="818" y="526" class="m">new · switch · rename · export</text>
 </g>
 <text x="428" y="600" class="m">Stored in the browser: chats, taught objects, frame buffer (RAM only).</text>
-<text x="428" y="632" class="m">Frames go to the server only when you ask something.</text>
+<text x="428" y="632" class="m">Frames only ever go to the local server on this computer.</text>
 <text x="428" y="690" class="t b">Modes</text><text x="520" y="690" class="m">Chat · Explain · Describe · Read / translate</text>
 <text x="428" y="730" class="t b">Status</text><text x="520" y="730" class="m">service lights · suggestion chips · memory panel</text>
 
