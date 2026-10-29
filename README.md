@@ -11,7 +11,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | Capability | How |
 |---|---|
 | See and chat | Every question is sent with the current camera frame to a local vision-language model (Qwen2.5-VL 7B via Ollama). Replies stream in token by token. |
-| Talk | Push-to-talk speech input (Web Speech API) and spoken replies (browser TTS), sentence by sentence while the answer streams. |
+| Talk | Push-to-talk speech input and spoken replies (browser TTS), sentence by sentence while the answer streams. Input has two engines: Chrome's Web Speech API, or **🔒 offline mic**: the browser records and `faster-whisper` transcribes on your CPU (works in Firefox too). |
 | Spatial labels | `find my keys`, `label everything`: the model returns bounding boxes (grounding), drawn as neon boxes over the video. |
 | Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
@@ -48,6 +48,13 @@ ollama pull qwen2.5vl:7b
 cd lensmate && node server.js        # no npm install, no dependencies
 # open http://localhost:3000 in Chrome and allow camera + microphone
 ```
+
+**Offline speech (optional):** install the Python service once, then start both with `./start.sh`.
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs python3-venv on Ubuntu
+./start.sh        # stt_server.py (faster-whisper small.en, CPU) + node server.js
+```
+The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. Taught object names are sent as Whisper hotwords so it can spell words like "mecanum".
 
 Try: *"What is this?"*, *"label everything"*, *"find the scissors"*, hold **Space** to talk.
 
@@ -96,11 +103,20 @@ The model describes real features but mostly cannot name niche hardware: it call
 
 Caveat: the reference and test photos come from the same session, room, and lighting, so 5/6 is optimistic for the real world, and the metric counts the taught name appearing in the answer. Cost: about 1.3 s per taught photo checked before each answer.
 
+**Offline speech (`eval/stt_eval.py`):** 10 command sentences synthesised with Piper, encoded as WebM/Opus like the browser sends, transcribed via `/api/stt`.
+
+| Setup | Word error rate | Median latency |
+|---|---|---|
+| Whisper small.en, CPU int8 | **4.0%** (2/50 words) | **0.8 s** |
+| + taught names as hotwords | **0.0%** | 0.8 s |
+
+The two errors were all one sentence: Whisper heard *"mecanum wheel"* as *"mechanism wheel"*; hotwords fixed it. Caveats: clean synthetic speech from one voice is a best case, not a real-world WER, and the hotword test reused the exact vocabulary (which is what taught names are). A real-browser test (`eval/stt_browser_test.py`, headless Chrome with a fake microphone) confirmed record → upload → transcribe → app in 0.7 s.
+
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
 - In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
 - The tracker follows **translation only** (no scale or rotation), loses fast motion (more than about 24 px per frame step) or objects that leave the view, and ignores featureless patches. Tracking was tested on simulated camera motion, not yet on a live webcam. Labels auto-clear after 60 s.
-- Chrome's speech recognition sends audio to a cloud service. Vision and reasoning are fully local.
+- Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine (the TTS voice is already local). Vision and reasoning are always local.
 - A webcam is not a headset. This is a "mixed reality" prototype (virtual companion and anchored labels over a live camera feed), not spatial mapping.
 
 ## Project layout
@@ -108,7 +124,9 @@ Caveat: the reference and test photos come from the same session, room, and ligh
 ```
 server.js            static server + /api/chat (streaming) + /api/detect (grounding), prompts and modes
 public/app.js        camera, frame capture, chat streaming
-public/voice.js      push-to-talk STT, sentence-level TTS
+public/voice.js      push-to-talk input (Web Speech or offline mic), sentence-level TTS
+stt_server.py        offline speech-to-text service (faster-whisper, CPU)
+start.sh             starts the speech service and the web server
 public/spatial.js    boxes over video, find/label commands, tracking loop
 public/tracker.js    block-matching box tracker (pure functions, unit-tested)
 public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)

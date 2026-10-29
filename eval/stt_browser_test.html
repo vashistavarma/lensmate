@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8">
+<!-- Page for eval/stt_browser_test.py: real voice.js with stubs, so the offline mic path can be driven in Chrome. -->
+<button id="mic"></button><input id="speak"><input type="checkbox" id="offline"><div id="status"></div><input id="q">
+<script>
+window.asked = []; window.lensAsk = q => asked.push(q);
+window.lensRefs = () => [{ name: 'ultrasonic sensor' }];
+window.speechSynthesis = { cancel() {}, speak() {}, speaking: false };
+localStorage.setItem('lensmate.offline', '1');
+</script>
+<script src="voice.js"></script>

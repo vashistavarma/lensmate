@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
+const STT = process.env.STT_URL || 'http://127.0.0.1:3001'; // offline speech service (stt_server.py)
 const OLLAMA = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const MODEL = process.env.MODEL || 'qwen2.5vl:7b';
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
@@ -111,7 +112,22 @@ async function detect(req, res) {
   }
 }
 
+// Offline speech-to-text: forward the recorded audio to stt_server.py (faster-whisper).
+async function stt(req, res) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  try {
+    const r = await fetch(`${STT}/transcribe${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`, { method: 'POST', body: Buffer.concat(chunks) });
+    res.writeHead(r.status, { 'Content-Type': 'application/json' });
+    res.end(await r.text());
+  } catch (e) {
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Offline speech service is not running (start stt_server.py): ' + e.message }));
+  }
+}
+
 http.createServer((req, res) => {
+  if (req.method === 'POST' && req.url.split('?')[0] === '/api/stt') return stt(req, res);
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);
   serveStatic(req, res);
