@@ -118,7 +118,7 @@ public/avatar.js     Three.js companion
 public/ui.js         modes, teach-me memory, memory panel, chips, service lights
 public/sessions.js   chat history
 eval/                benchmarks, unit tests, browser tests, smoke test
-docs/                architecture, design notes, demo runbook, post draft
+docs/                architecture diagram, design notes, live-demo runbook, LinkedIn post kit, LensMate_presentation.pptx (10-minute deck with speaker notes)
 ```
 
 ## Roadmap
