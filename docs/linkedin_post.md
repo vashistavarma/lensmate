@@ -1,39 +1,53 @@
-# LinkedIn post (draft). Edit, then post with the video
+# LinkedIn post kit
 
-**Option A, main (recommended)**
+Attach the **demo video** (upload natively). Use `architecture.png` as the second image or in the first comment. Fill the two placeholders: `[GITHUB LINK]`.
 
-I built a mixed-reality chatbot that runs entirely on my laptop. No headset, no API bill. 👓🧠
+## Main post (recommended)
 
-For my Introduction to Generative AI course I wanted to see how far a *local* vision-language model could go as a "see and talk" assistant. Meet LensMate:
+I built a mixed-reality chatbot that runs entirely on my laptop. No headset. No API bill. 👓
 
-🎥 Your webcam is the passthrough view
-🗣️ Talk to it (push-to-talk), and it answers out loud
-🔍 Say "find my keys" and it draws labels on the live video that stay on the object as you move
+For my Introduction to Generative AI course I wanted to see how far a *local* vision-language model could go as a "see, talk and understand" assistant. Meet LensMate:
+
+🎥 My webcam is the passthrough view
+🗣️ I talk to it, it answers out loud (speech can run fully offline)
+🔍 "Find my keys": labels appear on the live video and follow the object as I move
 👆 Click any object to zoom in and ask about it
+🎬 "What am I doing?": it describes my action, and can record a clip
+🧠 Show it something once, say "this is a motor driver", and it recognises it next time
 🛸 A 3D companion floats over the scene and flies to whatever it's talking about
-🧠 Show it an object, say "this is a motor driver", and it recognises it next time
-🔒 Optional fully offline speech (Whisper on the CPU, ~0.8 s per command)
-🎬 Ask "what am I doing?" and it describes your action (motion is measured in code, the model names the thing)
-💬 Saved chats, like ChatGPT
 
-How it works: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU) for vision + language, a tiny zero-dependency Node server, and a browser front end with Three.js and the Web Speech API.
+Under the hood: Qwen2.5-VL 7B on Ollama (8 GB laptop GPU), faster-whisper on the CPU, a zero-dependency Node server, and a browser front end with Three.js.
 
-Four things I learned:
-1️⃣ Grounding has a trap: the model's box coordinates are in the space of the image *after* Ollama resizes it. My boxes were ~1.2× too big until I sent frames at exactly 1204×672. After that, IoU hit 0.96.
-2️⃣ A 7B model doesn't know niche hardware. On my real photos it named a mecanum wheel 0/4 times and a motor driver 1/4. So I added visual memory: show it the object once and say "this is a motor driver". Recognition on held-out photos went to 5/6. My first version also claimed matches on unrelated images, so I added a separate yes/no verification per taught photo, and false matches dropped to 0/10.
-3️⃣ Honest evaluation matters: my benchmark is synthetic, so it proves the pipeline, not real-world accuracy. And a model that answers in 2 seconds returns boxes for a scene that has already moved, so I added a tiny CPU block-matching tracker that catches boxes up and follows them (within 2 px in a simulated 80 px pan).
+What I learned by measuring instead of assuming:
 
-4️⃣ Even Whisper hit the niche-vocabulary wall: it heard "mecanum wheel" as "mechanism wheel". Feeding it the names I'd taught the assistant (as hotwords) took word error from 4% to 0% on my test set (clean synthetic speech, so a best case).
+1️⃣ My boxes were 1.2× too big. The model reports coordinates in the image size *after* Ollama resizes it. Sending frames at exactly 1204×672 fixed it (IoU 0.96).
+2️⃣ A 7B model doesn't know niche hardware: on my real photos it named a mecanum wheel and a motor driver correctly just 1 time in 8. Teaching it with a photo fixed that (5-6 of 6 on held-out photos). My first version also claimed matches on unrelated images, so I added a separate yes/no check per taught photo: 0 false claims in 10 tests.
+3️⃣ The model can't follow motion across frames (it called left-to-right motion "circular rotation"). So motion is measured in code, and the model just names what's moving.
+4️⃣ A newer model (Qwen3-VL 8B) scored 0/8 and was 6× slower, so I kept the older one.
 
-Median ~1.3 s to first token. Vision, reasoning and (optionally) speech all run on the laptop.
+Honest limits: the real-object test is 8 photos of 2 objects, and action recognition is only tested on synthetic clips so far. Details, benchmarks and failures are in the repo.
 
-Code, architecture diagram and eval harness: [GitHub link]
+Code, architecture and evaluation: [GITHUB LINK]
 
-#GenerativeAI #MixedReality #ComputerVision #LLM #Ollama #ThreeJS #BuildInPublic
+#GenerativeAI #MixedReality #ComputerVision #LLM #Ollama #BuildInPublic
 
----
-**Option B, shorter**
+## Short version
 
-Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model (Qwen2.5-VL on a laptop GPU). It labels objects on the live video, talks back, and a 3D companion flies to what it's describing. Biggest lesson: coordinate calibration. Boxes were 1.2× off until I matched the model's resize resolution. Demo + code: [GitHub link] #GenerativeAI #MixedReality #Ollama
+Built a mixed-reality chatbot for my GenAI course: webcam + voice + a local vision-language model on a laptop GPU. Labels follow objects on the live video, it describes what you're doing, and you can teach it new objects with one photo. Best lesson: my 7B model named niche hardware correctly 1 time in 8, until I taught it, and the boxes were 1.2× off until I matched the model's resize resolution. Demo + code: [GITHUB LINK] #GenerativeAI #MixedReality #Ollama
 
-**Posting tips:** upload the video natively (not a link), put the GitHub link in the first comment if you want more reach, post Tue-Thu morning, reply to every comment in the first hour, and tag your course/instructor only if they're fine with it.
+## First comment (post it right after)
+
+Architecture and the full list of things that failed first (box scaling, false matches, multi-frame motion, a model swap that made things worse) are in the repo's docs/DESIGN_NOTES.md. Happy to answer questions about running a vision model locally!
+
+## Image alt text (for architecture.png)
+
+Architecture diagram of LensMate: camera, voice, text and click inputs feed a browser front end with a 3D companion, label tracking, action analysis and memory; a local Node server talks to Qwen2.5-VL on Ollama and faster-whisper on the CPU.
+
+## Posting checklist
+
+- [ ] Video is under 90 s, has captions, starts with the labels + companion on screen (no long intro)
+- [ ] `[GITHUB LINK]` filled in; repo is public and the README opens with the architecture image
+- [ ] Numbers in the post match `README.md` (they were measured on the final code)
+- [ ] Post Tue-Thu morning; reply to every comment in the first hour
+- [ ] Mention your course or instructor only if they are fine with it
+- [ ] Don't claim "real-world accuracy": say synthetic where it is synthetic

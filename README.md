@@ -1,168 +1,130 @@
-# LensMate: a general-purpose Mixed Reality chatbot
+# LensMate: a mixed-reality chatbot that runs on your laptop
 
-Point your camera at anything, talk to it, and an AI companion answers by voice, **draws labels on the live view**, and **flies over to the object it is talking about**. It runs on a laptop with a webcam, with no headset and no paid API. The vision-language model runs locally.
+Point a webcam at anything and talk to it. LensMate answers by voice, **draws labels that follow objects on the live video**, lets you **click an object to ask about it**, **describes what you are doing**, **records clips**, and a 3D companion floats over the scene and flies to whatever it is talking about. You can **teach it new objects** by showing them once.
 
-> Built for the *Introduction to Generative AI* course.
+No headset, no cloud API, no API bill: the vision-language model runs locally through [Ollama](https://ollama.com), and speech can run fully offline too.
 
 ![architecture](docs/architecture.png)
 
+> Built for the *Introduction to Generative AI* course. Demo video: _add link after recording_.
+
 ## What it does
 
-| Capability | How |
+| | |
 |---|---|
-| See and chat | Every question is sent with the current camera frame to a local vision-language model (Qwen2.5-VL 7B via Ollama). Replies stream in token by token. |
-| Talk | Push-to-talk speech input and spoken replies (browser TTS), sentence by sentence while the answer streams. Input has two engines: Chrome's Web Speech API, or **🔒 offline mic**: the browser records and `faster-whisper` transcribes on your CPU (works in Firefox too). |
-| Spatial labels | `find my keys`, `label everything`: the model returns bounding boxes (grounding), drawn as neon boxes over the video. |
-| Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
-| 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
-| Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
-| Actions + recording | Ask *"what am I doing?"* (looks at the last ~4 s from a rolling in-browser buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion (direction, location, back-and-forth swings like waving) is **measured in code**; the model gets 2-3 key frames plus that measurement and names what is moving. |
-| Chat history | Like ChatGPT/Claude: **＋ New chat**, a **☰ list of past chats** to reopen, rename, delete or export (Markdown), and your current chat is restored after a reload. Saved in the browser (up to 50 chats); camera frames are not saved, and taught photos/facts are shared across chats. |
-| Click-to-ask | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
-| Teach me | Say *"remember that the red box is mine"* (text fact) or hold an object up and say *"this is an L298N motor driver"* / *"remember this as …"*: LensMate stores the words **and a reference photo**. Persisted in the browser; cleared with *"forget everything"*. |
-| Visual memory | On each question the server checks every taught photo against the live frame with a separate yes/no vision query (max 3, ~1.3 s each). Only verified matches are given to the model, so it recognises taught objects on sight without false matches. |
+| **See and chat** | Every question carries the current camera frame to a local vision-language model (Qwen2.5-VL 7B). Replies stream in token by token and are spoken sentence by sentence. Modes: 💬 Chat, 🎓 Explain, 👁 Describe, 📖 Read / translate. |
+| **Spatial labels** | `find my keys`, `label everything`: the model returns bounding boxes (grounding) and neon labels are drawn over the video. A lightweight block-matching tracker keeps each label on its object at ~20 fps, after first catching it up for the 1-3 s the model took to answer. |
+| **Click-to-ask** | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
+| **Actions and recording** | Ask *"what am I doing?"* (last ~4 s from an in-browser rolling buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion is **measured in code**; the model gets 2-3 key frames plus that measurement. |
+| **Teach it** | Hold an object up and say *"this is an L298N motor driver"* (or *"remember this as …"*): it stores your words **and a photo**. Later, each taught photo is verified against the live view with a separate yes/no vision query, so it recognises the object on sight without false matches. A 🧠 panel shows and deletes what it knows. |
+| **Voice** | Hold 🎤 or Space to talk. Two engines: Chrome's Web Speech API, or **🔒 offline mic** (the browser records, `faster-whisper` transcribes on your CPU in ~0.8 s). Taught object names are passed to Whisper as hotwords so it can spell words like "mecanum". |
+| **Chat history** | Like ChatGPT/Claude: ＋ New chat, ☰ a list of past chats to reopen, rename, delete or export (Markdown). Saved in the browser; your current chat survives a reload. |
+| **Companion** | A Three.js orb that idles, listens, thinks and talks, and flies next to whatever it labelled or you clicked. |
+| **Helpful UI** | Suggestion chips, a welcome message, service status lights (vision model, offline speech), and a pre-flight smoke test. |
 
-## Architecture
+## Quick start
 
-```
- Browser (Chrome)                                   Node server              Ollama (local GPU)
-┌────────────────────────────────────┐          ┌───────────────┐          ┌──────────────────┐
-│ webcam ─► <video> (the "passthrough")│          │ POST /api/chat │ ───────► │ qwen2.5vl:7b      │
-│ mic ─► Web Speech STT ─► text        │ ─frame─► │ POST /api/detect│ ◄─JSON── │ (vision + text)   │
-│ canvas overlay ◄─ boxes + labels     │          │ static files   │          └──────────────────┘
-│ Three.js avatar ◄─ state/point events│          └───────────────┘
-│ TTS ◄─ streamed sentences            │
-└────────────────────────────────────┘
-```
-
-Key design points:
-- **Grounding calibration:** Qwen2.5-VL returns boxes in the pixel space of the image *after Ollama resizes it*. Smaller images are upscaled, so coordinates come back about 1.2× too large. Sending frames at exactly **1204×672** gives 1:1 coordinates, which I verified empirically (mean IoU 0.96 on the benchmark).
-- **Action design:** I first tried feeding the model a frame sequence (a 3×3 contact sheet, or 5 separate images). Ollama passes images to Qwen2.5-VL as independent pictures with no sense of time, so it called left-to-right motion "circular rotation" and said "stationary" for a moving ball (and took 18 s). Comparing only the first and last frame worked (5/6 synthetic cases, 2.6 s), so the final design is hybrid: `motion.js` measures the motion from the whole clip, and the model sees start / peak-movement / end frames plus the measurement.
-- **Visual memory design:** putting reference photos straight into the prompt recognised the objects but *also claimed matches on unrelated images* (4/4 false positives). Verifying each reference with its own yes/no question fixed that. The prototype got 19/20 pair decisions right with no false positives.
-- **Tracking:** `tracker.js` matches each box's patch between small grayscale frames (sum of absolute differences, ±6 px per step). A box is dropped after 8 consecutive bad matches. Unit tests (`node eval/test_tracker.js`) and a headless-Chrome integration test (`eval/track_page.html`: box within 2 px after an 80 px pan) cover it.
-- **Cheap context:** only the newest user turn carries an image. History is text-only.
-- **Event bus:** the avatar listens to small `lens-state` and `lens-point` browser events, so UI modules stay decoupled.
-
-## Run it
-
-Requirements: Linux, Node 18+, [Ollama](https://ollama.com) with a vision model, Chrome or Edge (for speech recognition), a webcam. About 8 GB of VRAM is comfortable for the 7B model.
+Requirements: Linux (developed on Ubuntu 24.04), Node 18+ (developed on Node 22), [Ollama](https://ollama.com), a webcam, and a GPU with about 8 GB of VRAM (developed on an RTX 5060 Laptop). Python 3.10+ is only needed for the optional offline speech.
 
 ```bash
 ollama pull qwen2.5vl:7b
-cd lensmate && node server.js        # no npm install, no dependencies
-# open http://localhost:3000 in Chrome and allow camera + microphone
+git clone https://github.com/YOUR_USERNAME/lensmate.git && cd lensmate
+node server.js            # no npm install: the server has zero dependencies
+# open http://localhost:3000, allow camera (and microphone)
 ```
 
-**Offline speech (optional):** install the Python service once, then start both with `./start.sh`.
+**Offline speech (optional):**
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs python3-venv on Ubuntu
-./start.sh        # stt_server.py (faster-whisper small.en, CPU) + node server.js
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # Ubuntu may need: sudo apt install python3-venv
+./start.sh                # starts the speech service (faster-whisper small.en, CPU) and the web server
 ```
-The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. Taught object names are sent as Whisper hotwords so it can spell words like "mecanum".
+The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. In Firefox (no Web Speech API) it is the only mic option.
 
-The server listens on `127.0.0.1` only (your camera frames and GPU are not exposed to the network); set `HOST=0.0.0.0` to allow LAN access.
+**Before a demo:** `python3 eval/smoke.py` runs a 30-second pre-flight check (services, a vision answer, grounding, and the tracker and motion unit tests).
 
-Pre-flight check before a demo: `python3 eval/smoke.py`.
+Options: `PORT`, `HOST` (default `127.0.0.1`: camera frames and your GPU are not exposed to the network), `MODEL`, `GROUND`, `STT_URL`.
 
-Try: *"What is this?"*, *"label everything"*, *"find the scissors"*, hold **Space** to talk.
+## Things to say or do
+
+| Say / do | What happens |
+|---|---|
+| "What is this?" / any question | Answers about the camera view |
+| "Label everything" / 🔍 | Boxes and names for every object, tracked as you move |
+| "Find the scissors" | Boxes only the scissors |
+| Click an object | Zoomed identification, companion flies there |
+| "This is a motor driver" / "Remember this as …" | Saves a photo + the name |
+| "Remember that the red box is mine" | Saves a text fact |
+| "What do you remember?" / "Forget everything" | Lists / clears memory (or use 🧠) |
+| "What am I doing?" | Describes your action from the last ~4 s |
+| "Record for 5 seconds" | Records, saves a clip, describes the action |
+| "Clear" | Removes labels |
 
 ## Evaluation
 
-`eval/` contains a reproducible harness that exercises the real server endpoints (`python3 eval/make_cases.py && python3 eval/run_eval.py`).
+Everything below is reproducible from `eval/` (see the commands). Numbers are from the final code on an RTX 5060 Laptop (8 GB).
 
-Results on the synthetic benchmark (8 cases, RTX 5060 Laptop 8 GB, Qwen2.5-VL 7B):
-
-| Metric | Result |
-|---|---|
-| Chat / reading / describe / memory | **5/5** |
-| Detection passing IoU ≥ 0.5 | **3/3** (mean IoU **0.96**) |
-| Time to first token (median) | **1.3 s** |
-| Full chat answer (median) | **1.5 s** |
-| Detection scan (median) | **1.3 s** |
-
-**Memory ablation:** asked *"What is the green triangle called?"* **with** the taught fact the model answers *"a Zorp"*, and **without** it, *"a triangle"*. So the improvement comes from the memory feature.
-
-### Real-object evaluation (bring your own photos)
-The synthetic benchmark is easy, so there is a second harness for real objects:
-```bash
-# 1. In the app, press 📷 on each object (about 20-30 frames: everyday items, niche hardware, text)
-python3 eval/real_eval.py ingest ~/Downloads     # copies lensmate_*.jpg into eval/real/ (git-ignored, stays private)
-# 2. Edit eval/real/labels.csv: put accepted names in `truth`, separated by |   e.g.  motor driver|l298n|h-bridge
-python3 eval/real_eval.py run                    # asks "What is this object?", auto-scores, writes eval/real/results.csv
-```
-Results from this run belong in the table above once collected. With ~25 images the accuracy is indicative, not precise.
-
-**Preliminary real-object results (2 objects, 4 photos each, auto-scored by keyword):**
-
-| Object | Unaided | With taught fact |
+| Area | Test | Result |
 |---|---|---|
-| Mecanum wheel | 0/4 | 4/4 |
-| Motor driver | 1/4 | 4/4 |
+| Vision chat | 5 synthetic questions (colour, counting, reading, scene description, taught fact) | **5/5**, median **1.3 s** per answer, **1.2 s** to first token |
+| Grounding | 3 detection cases, IoU ≥ 0.5 (`python3 eval/run_eval.py`) | **3/3**, mean IoU **0.96**, 0.8 s per scan |
+| Real objects, unaided | 8 real photos: mecanum wheel ×4, motor driver ×4 (`eval/real_eval.py`) | **1/8** (mecanum 0/4, motor driver 1/4) |
+| Real objects, taught | same photos, taught name given as text | **8/8** (easy test: the name is supplied) |
+| Visual memory | one taught photo per object, held-out photos as tests (`eval/visual_memory_eval.py`) | **5/6** and **6/6** in two runs |
+| Visual memory, false claims | unrelated images + other object with the wrong reference (10 cases) | **0/10** false claims, both runs |
+| Model comparison | Qwen3-VL 8B on the same 8 real photos | **0/8**, ~9 s per answer: rejected |
+| Offline speech | 10 commands, Piper-synthesised, WebM/Opus through `/api/stt` (`eval/stt_eval.py`) | **4.0%** WER, **0.0%** with taught-name hotwords, 0.8 s |
+| Offline mic in a real browser | headless Chrome + fake microphone (`eval/stt_browser_test.py`) | pass, 0.7 s |
+| Actions | headless Chrome + synthetic camera: right / up / wave / still via `record`, wave / right via "what am I doing?" (`eval/action_eval.py`) | **6/6**, ~3-5 s after the clip |
+| Motion analysis | directions, waving, noise, camera pan, lighting ramp (`node eval/test_motion.js`) | **10/10** |
+| Tracker | single shifts, large catch-up, 20-frame chain, flat patch (`node eval/test_tracker.js`) | **8/8**; in-browser box within 2 px after an 80 px pan |
 
-The model describes real features but mostly cannot name niche hardware: it called the mecanum wheel a "gear" or "roller", and the motor driver an "Arduino Uno" or a "DC-DC converter" (right category, wrong part); its one motor-driver hit also called an L298N a *stepper* driver, so keyword scoring is lenient. Taught facts make it name the object, but it does not add knowledge (a mecanum wheel was later explained as a "caster wheel"). The taught-fact column is an easy, optimistic test because the name is supplied.
+## What did not work first (and what I did about it)
 
-**Visual memory (`eval/visual_memory_eval.py`, same 8 real photos; one photo per object is the taught reference, the rest are tests):**
+Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md). The short version:
 
-| Test | Result |
-|---|---|
-| Held-out photos recognised by taught photo (unaided was 1/6) | **5/6** |
-| False claims on unrelated images | **0/4** |
-| False claims: other object shown, wrong reference only | **0/6** |
+- **Box coordinates were 1.2× too big.** Ollama upscales small images before the model sees them, and the model reports pixels in that resized space. Sending frames at exactly 1204×672 makes coordinates map 1:1.
+- **Putting reference photos in the prompt made the model claim matches on unrelated images** (4/4 false positives). Verifying each taught photo with its own yes/no question removed them.
+- **The model cannot follow motion across frames** through Ollama (a contact sheet turned left-to-right motion into "circular rotation"). Motion is now measured in code and the model sees start / peak / end frames.
+- **A newer model was worse:** Qwen3-VL 8B got 0/8 and was ~6× slower here.
+- **Whisper heard "mecanum" as "mechanism."** Passing taught names as hotwords fixed it.
 
-Caveat: the reference and test photos come from the same session, room, and lighting, so 5/6 is optimistic for the real world, and the metric counts the taught name appearing in the answer. Cost: about 1.3 s per taught photo checked before each answer.
+## Honest limitations
 
-**Action recognition (`eval/action_eval.py`, `eval/test_motion.js`):** headless Chrome with a synthetic camera (a red ball with known motion next to a static blue square), the real record / "what am I doing?" commands, the motion analysis and the model.
+- The benchmark is **synthetic** where noted. Real-object evidence is **8 photos of 2 objects**: indicative, not precise.
+- A 7B local model **does not know niche hardware by name** (mecanum wheel, motor driver). Teaching fixes the *name*, not the model's *knowledge* about the object (it once explained a mecanum wheel as a "caster wheel").
+- Visual-memory tests use reference and test photos from the same room and lighting, so they are optimistic.
+- Action recognition was tested on **synthetic clips only**. The motion measure follows one blob (several moving things merge), cannot name gestures beyond direction and repetition, and its thresholds are untested on real webcam noise. The model sometimes repeats the measurement wording.
+- The tracker follows **translation only** (no scale/rotation), loses fast motion, and ignores featureless patches.
+- A webcam is not a headset: this is a mixed-reality *prototype* (virtual companion and anchored labels over a live camera feed), not spatial mapping.
+- Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine.
 
-| Scenario | Result |
-|---|---|
-| Ball moves right / moves up / waves back and forth / sits still (record 4 s) | **4/4**, answer ~3-5 s after the clip ends, clip saved each time |
-| Same via instant "what am I doing?" (right, wave) | **2/2** |
-| Motion-analysis unit tests (directions, waving, noise, camera pan, lighting ramp) | **10/10** |
+## Privacy
 
-Caveats: synthetic scenes only. Real webcams have noise, auto-exposure and clutter, and the thresholds were tuned on synthetic clips. The motion measure tracks one blob (several moving things merge into one), cannot tell *what* gesture a person makes beyond direction and repetition, and the model sometimes repeats the measurement wording in its answer. The 12-second frame buffer lives only in the browser's memory and is sent to the model only when you ask.
-
-**Offline speech (`eval/stt_eval.py`):** 10 command sentences synthesised with Piper, encoded as WebM/Opus like the browser sends, transcribed via `/api/stt`.
-
-| Setup | Word error rate | Median latency |
-|---|---|---|
-| Whisper small.en, CPU int8 | **4.0%** (2/50 words) | **0.8 s** |
-| + taught names as hotwords | **0.0%** | 0.8 s |
-
-The two errors were all one sentence: Whisper heard *"mecanum wheel"* as *"mechanism wheel"*; hotwords fixed it. Caveats: clean synthetic speech from one voice is a best case, not a real-world WER, and the hotword test reused the exact vocabulary (which is what taught names are). A real-browser test (`eval/stt_browser_test.py`, headless Chrome with a fake microphone) confirmed record → upload → transcribe → app in 0.7 s.
-
-**Model comparison (same 8 real photos, unaided "What is this object?"):**
-
-| Model | Correct | Median latency |
-|---|---|---|
-| Qwen2.5-VL 7B (default) | 1/8 | 1.4 s |
-| Qwen3-VL 8B | 0/8 | 9.3 s |
-
-The newer model did not know a mecanum wheel or a motor driver either ("gear", "relay module", "audio amplifier") and was about 6× slower on this 8 GB GPU, so it was rejected. Both are small samples. Switching is supported anyway: `MODEL=qwen3-vl:8b GROUND=norm1000 node server.js` (Qwen3-VL reports boxes on a 0-1000 grid, Qwen2.5-VL in pixels). The lesson matches the visual-memory result: for niche objects, teaching beats model swapping.
-
-### Honest limitations
-- The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.
-- In manual tests, the 7B model **misidentified niche hardware** (motor driver, mecanum wheel, ultrasonic sensor, a glue tube). Common objects are far more reliable. The teach-me memory and the "describe cues, give a labelled best guess" prompt are mitigations, not a cure. A larger or fine-tuned model would be the real fix.
-- The tracker follows **translation only** (no scale or rotation), loses fast motion (more than about 24 px per frame step) or objects that leave the view, and ignores featureless patches. Tracking was tested on simulated camera motion, not yet on a live webcam. Labels auto-clear after 60 s.
-- Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine (the TTS voice is already local). Vision and reasoning are always local.
-- A webcam is not a headset. This is a "mixed reality" prototype (virtual companion and anchored labels over a live camera feed), not spatial mapping.
+Vision and reasoning run locally. Chats, taught photos and facts are stored in your browser's `localStorage` (never uploaded). The 12-second action buffer lives in browser memory and frames are sent to the local model only when you ask. Nothing is written to disk unless you click *Save clip* or *Export*. `eval/real/` (your own test photos) is git-ignored.
 
 ## Project layout
 
 ```
-server.js            static server + /api/chat (streaming) + /api/detect (grounding), prompts and modes
-public/app.js        camera, frame capture, chat streaming
-public/voice.js      push-to-talk input (Web Speech or offline mic), sentence-level TTS
+server.js            static server + /api/chat (streaming), /api/detect (grounding), /api/stt, /api/health
 stt_server.py        offline speech-to-text service (faster-whisper, CPU)
 start.sh             starts the speech service and the web server
-public/spatial.js    boxes over video, find/label commands, tracking loop
+public/app.js        camera, frame capture, chat streaming
+public/voice.js      push-to-talk (Web Speech or offline mic), sentence-level TTS
+public/spatial.js    boxes over video, find/label commands, tracking loop, click-to-ask
 public/tracker.js    block-matching box tracker (pure functions, unit-tested)
-public/avatar.js     Three.js companion (idle/listening/thinking/speaking/pointing)
-public/motion.js     motion measurement for the action feature (pure, unit-tested)
-public/actions.js    rolling frame buffer, "what am I doing?" and "record" commands
-public/ui.js         modes, teach-me memory, memory panel, suggestion chips, service lights
-public/sessions.js   chat history (new / switch / rename / delete / export)
-eval/                benchmark generator, runner, results.json, tracker tests, real-object and visual-memory harnesses
+public/motion.js     motion measurement for actions (pure, unit-tested)
+public/actions.js    rolling frame buffer, "what am I doing?" and "record"
+public/avatar.js     Three.js companion
+public/ui.js         modes, teach-me memory, memory panel, chips, service lights
+public/sessions.js   chat history
+eval/                benchmarks, unit tests, browser tests, smoke test
+docs/                architecture, design notes, demo runbook, post draft
 ```
 
-## Future work
-Tracking with scale and re-detection, a larger or fine-tuned vision model, local Whisper for fully offline speech, a WebXR build for a Quest headset, and visual (not just textual) memory of taught objects.
+## Roadmap
+
+Tracking with scale and re-detection; a larger or fine-tuned vision model; real-webcam tuning of the motion thresholds and a gesture classifier; a WebXR build for a Quest headset; visual memory by embedding similarity instead of per-photo checks.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Three.js (MIT) is vendored in `public/vendor/`.
