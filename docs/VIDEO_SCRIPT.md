@@ -22,7 +22,7 @@ Goal: in 80 seconds show the five things that make LensMate different, include o
 | 0:30-0:38 | **Click** the small object. Ring pulse, orb flies there, zoomed answer. | "Click anything to zoom in and ask about it." | Click to ask |
 | 0:38-0:58 | Hold the motor driver up. "What is this?" (expect a wrong guess: **keep it**). Then: "**This is a motor driver.**" ("Got it, I'll remember"). Move it away, bring it back: "What is this?" The badge shows 🧠 recognised. | "A small local model doesn't know niche hardware, so it guesses wrong. But show it once, say what it is, and it remembers." | It guessed wrong, then I taught it once |
 | 0:58-1:10 | Wave at the camera. "What am I doing?" The answer describes waving. | "It can even describe what I'm doing. The motion is measured in code; the model just names it." | Action recognition |
-| 1:10-1:20 | Cut to `docs/architecture.png` (or slide 5), then the end card. | "It all runs locally: a vision model on the GPU, Whisper for speech, Three.js for the companion. The code, the benchmarks, and the things that broke first are on GitHub." | github.com/vashistavarma/lensmate |
+| 1:10-1:20 | Cut to the public-safe diagram (`architecture_public.png`, or slide 5), then the end card. | "It all runs locally: a vision model on the GPU, Whisper for speech, Three.js for the companion. The code, the benchmarks, and the things that broke first are on GitHub." | github.com/vashistavarma/lensmate |
 
 Word count of the voiceover is about 150 words, roughly 60 seconds of speech at a natural pace, leaving room for the pauses where the AI speaks.
 
@@ -47,7 +47,7 @@ Word count of the voiceover is about 150 words, roughly 60 seconds of speech at 
 
 1. Trim dead air; keep the AI voice at full length (do not cut off sentences).
 2. Burn in captions (the Caption column above). White text, dark translucent box, bottom third.
-3. Add the end card for 4-5 seconds: architecture image + "github.com/vashistavarma/lensmate" + "Qwen2.5-VL · faster-whisper · Three.js · all local".
+3. Add the end card for 4-5 seconds: the public-safe architecture image + "github.com/vashistavarma/lensmate" + "Qwen2.5-VL · faster-whisper · Three.js · all local".
 4. Export 1080p MP4, under 90 seconds, under 200 MB.
 5. Thumbnail: a frame with labels on the objects and the orb visible.
 

@@ -6,6 +6,8 @@ No headset, no cloud API, no API bill: the vision-language model runs locally th
 
 ![architecture](docs/architecture.png)
 
+> **This is the full private repository** (server, speech service, evaluation, docs). The public showcase is [`vashistavarma/lensmate`](https://github.com/vashistavarma/lensmate), which contains the browser front end only.
+
 > Built for the *Introduction to Generative AI* course. Demo video: _add link after recording_.
 
 ## What it does
@@ -28,7 +30,7 @@ Requirements: Linux (developed on Ubuntu 24.04), Node 18+ (developed on Node 22)
 
 ```bash
 ollama pull qwen2.5vl:7b
-git clone https://github.com/vashistavarma/lensmate.git && cd lensmate
+git clone git@github.com:vashistavarma/lensmate-private.git lensmate && cd lensmate
 node server.js            # no npm install: the server has zero dependencies
 # open http://localhost:3000, allow camera (and microphone)
 ```
