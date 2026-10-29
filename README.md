@@ -73,16 +73,18 @@ google-chrome --headless=new --virtual-time-budget=6000 --dump-dom file://$PWD/e
 ```
 The real-photo scripts (`real_eval.py`, `visual_memory_eval.py`) need your own labelled snapshots: see below.
 
+Note on latency: the figures below are for fresh images. Re-sending an identical image is far faster because Ollama caches the prompt, so repeated benchmark runs look quicker than real use, where every camera frame is new. Model output is not fully deterministic, so small runs vary by a case or two.
+
 | Area | Test | Result |
 |---|---|---|
-| Vision chat | 5 synthetic questions (colour, counting, reading, scene description, taught fact) | **5/5**, median **1.3 s** per answer, **1.2 s** to first token |
+| Vision chat | 5 synthetic questions (colour, counting, reading, scene description, taught fact) | **5/5**, median **1.3 s** per answer, **1.2 s** to first token (fresh images) |
 | Grounding | 3 detection cases, IoU ≥ 0.5 (`python3 eval/run_eval.py`) | **3/3**, mean IoU **0.96**, 0.8 s per scan |
 | Real objects, unaided | 8 real photos: mecanum wheel ×4, motor driver ×4 (`eval/real_eval.py`) | **1/8** (mecanum 0/4, motor driver 1/4) |
 | Real objects, taught | same photos, taught name given as text | **8/8** (easy test: the name is supplied) |
-| Visual memory | one taught photo per object, held-out photos as tests (`eval/visual_memory_eval.py`) | **5/6** and **6/6** in two runs |
+| Visual memory | one taught photo per object, held-out photos as tests (`eval/visual_memory_eval.py`) | **5/6 to 6/6** (three runs: 6/6, 5/6, 5/6) |
 | Visual memory, false claims | unrelated images + other object with the wrong reference (10 cases) | **0/10** false claims, both runs |
 | Model comparison | Qwen3-VL 8B on the same 8 real photos | **0/8**, ~9 s per answer: rejected |
-| Offline speech | 10 commands, Piper-synthesised, WebM/Opus through `/api/stt` (`eval/stt_eval.py`) | **4.0%** WER, **0.0%** with taught-name hotwords, 0.8 s |
+| Offline speech | 10 commands, Piper-synthesised, WebM/Opus through `/api/stt` (`eval/stt_eval.py`) | **2-4%** WER across runs (always "mecanum" heard as "mechanism"), **0.0%** with taught-name hotwords, ~0.8-1 s |
 | Offline mic in a real browser | headless Chrome + fake microphone (`eval/stt_browser_test.py`) | pass, 0.7 s |
 | Actions | headless Chrome + synthetic camera: right / up / wave / still via `record`, wave / right via "what am I doing?" (`eval/action_eval.py`) | **6/6**, ~3-5 s after the clip |
 | Motion analysis | directions, waving, noise, camera pan, lighting ramp (`node eval/test_motion.js`) | **10/10** |

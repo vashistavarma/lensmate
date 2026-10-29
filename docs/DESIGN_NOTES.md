@@ -12,7 +12,7 @@ LensMate was built step by step, and several of the most useful lessons came fro
 **Symptom.** With two taught photos attached to the prompt, the model recognised held-out photos 6/6, but also said "motor driver" for a plain shapes image and a text sign (4/4 unrelated images wrongly matched).
 **Cause.** Prompting a 7B model with "these are references, use them only if they match" is not enough; it collapses toward naming a reference.
 **Fix.** Verify each taught photo separately with a yes/no query ("Image 1 is a reference photo of a X. Is a X of the same kind clearly visible in image 2? Answer only YES or NO."), then give the main model only the verified names.
-**Verified.** Prototype: 19/20 pair decisions correct, no false positives. Final pipeline: 5/6 and 6/6 recognition across two runs, **0/10** false claims. Cost: ~1.3 s per taught photo checked (max 3 per question).
+**Verified.** Prototype: 19/20 pair decisions correct, no false positives. Final pipeline: 5/6 to 6/6 recognition across three runs (6/6, 5/6, 5/6), **0/10** false claims. Cost: ~1.3 s per taught photo checked (max 3 per question).
 
 ## 3. The model cannot follow motion across frames
 **Symptom.** Given 9 frames as a numbered 3×3 contact sheet, it described left-to-right motion as "circular rotation". Given 5 separate images it said a moving ball was "stationary", and took 18 s.
@@ -25,7 +25,7 @@ LensMate was built step by step, and several of the most useful lessons came fro
 Qwen3-VL 8B (also reports boxes on a 0-1000 grid, supported via `GROUND=norm1000`) scored **0/8** on the real photos (vs 1/8) and took ~9 s per answer (vs ~1.4 s) on an 8 GB GPU. Rejected; the lesson matches entry 2: for niche objects, teaching beats model swapping.
 
 ## 5. Whisper does not know "mecanum"
-Offline speech got 4.0% WER on 10 command sentences, and both errors were one sentence: "mecanum wheel" was heard as "mechanism wheel". Passing the taught object names as `hotwords` fixed it (0.0%). Caveat: that test reused the same vocabulary, which is what taught names are, so it is not a general improvement; and the speech is clean synthetic audio, a best case.
+Offline speech got 2-4% WER on 10 command sentences (it varies by a word between runs), and the errors were always in one sentence: "mecanum wheel" was heard as "mechanism wheel". Passing the taught object names as `hotwords` fixed it (0.0%). Caveat: that test reused the same vocabulary, which is what taught names are, so it is not a general improvement; and the speech is clean synthetic audio, a best case.
 
 ## 6. Tracking labels cheaply
 Detection takes 1-3 s, so labels would land on a scene that already moved. A block-matching tracker (sum of absolute differences on 301×168 grayscale, ±6 px per step at ~20 fps) first catches each box up from the frame it was detected in (±20 px search), then follows it. A "lost" threshold of 16 (good matches cost ~2, an unrelated scene ~25) drops labels whose object left. Untextured patches are left in place instead of drifting randomly. Verified with 8 unit tests and an in-browser integration test (box within 2 px after an 80 px pan).

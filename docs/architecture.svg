@@ -57,5 +57,5 @@
 
 <rect x="50" y="800" width="1500" height="60" class="box"/>
 <text x="76" y="838" class="t b">Measured:</text>
-<text x="190" y="838" class="m" font-size="20">~1.2 s to first token · grounding IoU 0.96 · offline speech 0.8 s, 4% WER · actions 6/6 (synthetic) · taught-photo recognition 5–6/6 with 0 false claims</text>
+<text x="190" y="838" class="m" font-size="20">~1.2 s to first token · grounding IoU 0.96 · offline speech ~0.8 s, 2–4% WER · actions 6/6 (synthetic) · taught-photo recognition 5–6/6 with 0 false claims</text>
 </svg>
