@@ -28,7 +28,7 @@ Requirements: Linux (developed on Ubuntu 24.04), Node 18+ (developed on Node 22)
 
 ```bash
 ollama pull qwen2.5vl:7b
-git clone https://github.com/YOUR_USERNAME/lensmate.git && cd lensmate
+git clone https://github.com/vashistavarma/lensmate.git && cd lensmate
 node server.js            # no npm install: the server has zero dependencies
 # open http://localhost:3000, allow camera (and microphone)
 ```
