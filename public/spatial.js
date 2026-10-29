@@ -119,3 +119,25 @@ window.lensIntent = async question => {
 };
 
 document.getElementById('scan').addEventListener('click', () => window.lensAsk('label everything'));
+
+// --- Click-to-ask: click an object in the video; LensMate zooms into that spot (a crop at the camera's
+// native resolution, so small parts get more pixels), asks about it, and the companion flies there. ---
+const wrapEl = document.getElementById('wrap');
+const CROP_FRAC = 0.4; // crop width as a fraction of the frame
+function cropAround(fx, fy) { // fx, fy in 0..1 of the video; returns a 1204x672 JPEG of the zoomed region
+  const vw = cam.videoWidth, vh = cam.videoHeight;
+  const cw = vw * CROP_FRAC, ch = cw * DET_H / DET_W;           // keep 16:9 like the detect frame
+  const x = Math.min(Math.max(fx * vw - cw / 2, 0), vw - cw), y = Math.min(Math.max(fy * vh - ch / 2, 0), vh - ch);
+  const c = document.createElement('canvas'); c.width = DET_W; c.height = DET_H;
+  c.getContext('2d').drawImage(cam, x, y, cw, ch, 0, 0, DET_W, DET_H);
+  return c.toDataURL('image/jpeg', 0.88);
+}
+wrapEl.addEventListener('click', e => {
+  if (!cam.videoWidth) return;
+  const r = wrapEl.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+  const ring = document.createElement('div'); ring.className = 'ping'; ring.style.left = px + 'px'; ring.style.top = py + 'px';
+  wrapEl.append(ring); setTimeout(() => ring.remove(), 1300);
+  window.dispatchEvent(new CustomEvent('lens-point', { detail: { x: px, y: py } })); // companion flies to the click
+  clearTimeout(clearTimer); clearTimer = setTimeout(() => window.dispatchEvent(new CustomEvent('lens-point', { detail: null })), 8000);
+  window.lensAsk('What is the object at the centre of this zoomed view? Name it specifically.', cropAround(px / r.width, py / r.height));
+});

@@ -27,7 +27,7 @@ function addMsg(text, cls) {
   return d;
 }
 
-async function ask(question) {
+async function ask(question, imageOverride) {
   addMsg(question, 'user');
   window.dispatchEvent(new CustomEvent('lens-state', { detail: 'thinking' }));
   if (await window.lensIntent?.(question)) return;
@@ -37,7 +37,7 @@ async function ask(question) {
   const t0 = performance.now();
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, image: grabFrame(), mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: window.lensRefs?.() }),
+    body: JSON.stringify({ messages: history, image: imageOverride || grabFrame(), mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: window.lensRefs?.() }),
   });
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = '';
@@ -60,7 +60,7 @@ async function ask(question) {
   status.textContent = `reply in ${((performance.now() - t0) / 1000).toFixed(1)}s`;
 }
 
-window.lensAsk = async q => { send.disabled = true; try { await ask(q); } catch (err) { addMsg('⚠ ' + err.message, 'bot'); } send.disabled = false; };
+window.lensAsk = async (q, img) => { send.disabled = true; try { await ask(q, img); } catch (err) { addMsg('⚠ ' + err.message, 'bot'); } send.disabled = false; };
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
