@@ -16,6 +16,7 @@ Point your camera at anything, talk to it, and an AI companion answers by voice,
 | Label tracking | A lightweight block-matching tracker (~20 fps, CPU only) keeps each label on its object when the camera or object moves, and first catches the box up for the 1-3 s the model took to answer. |
 | 3D companion | A Three.js orb that idles, listens, thinks, and talks, and flies next to the object it labelled. |
 | Modes | 💬 Chat, 🎓 Explain, 👁 Describe (accessibility style), 📖 Read / translate. |
+| Click-to-ask | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | Teach me | Say *"remember that the red box is mine"* (text fact) or hold an object up and say *"this is an L298N motor driver"* / *"remember this as …"*: LensMate stores the words **and a reference photo**. Persisted in the browser; cleared with *"forget everything"*. |
 | Visual memory | On each question the server checks every taught photo against the live frame with a separate yes/no vision query (max 3, ~1.3 s each). Only verified matches are given to the model, so it recognises taught objects on sight without false matches. |
 
@@ -57,6 +58,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # needs pyt
 The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. Taught object names are sent as Whisper hotwords so it can spell words like "mecanum".
 
 The server listens on `127.0.0.1` only (your camera frames and GPU are not exposed to the network); set `HOST=0.0.0.0` to allow LAN access.
+
+Pre-flight check before a demo: `python3 eval/smoke.py`.
 
 Try: *"What is this?"*, *"label everything"*, *"find the scissors"*, hold **Space** to talk.
 
@@ -113,6 +116,15 @@ Caveat: the reference and test photos come from the same session, room, and ligh
 | + taught names as hotwords | **0.0%** | 0.8 s |
 
 The two errors were all one sentence: Whisper heard *"mecanum wheel"* as *"mechanism wheel"*; hotwords fixed it. Caveats: clean synthetic speech from one voice is a best case, not a real-world WER, and the hotword test reused the exact vocabulary (which is what taught names are). A real-browser test (`eval/stt_browser_test.py`, headless Chrome with a fake microphone) confirmed record → upload → transcribe → app in 0.7 s.
+
+**Model comparison (same 8 real photos, unaided "What is this object?"):**
+
+| Model | Correct | Median latency |
+|---|---|---|
+| Qwen2.5-VL 7B (default) | 1/8 | 1.4 s |
+| Qwen3-VL 8B | 0/8 | 9.3 s |
+
+The newer model did not know a mecanum wheel or a motor driver either ("gear", "relay module", "audio amplifier") and was about 6× slower on this 8 GB GPU, so it was rejected. Both are small samples. Switching is supported anyway: `MODEL=qwen3-vl:8b GROUND=norm1000 node server.js` (Qwen3-VL reports boxes on a 0-1000 grid, Qwen2.5-VL in pixels). The lesson matches the visual-memory result: for niche objects, teaching beats model swapping.
 
 ### Honest limitations
 - The benchmark is **synthetic** (clean shapes and text). It proves the pipeline, the grounding calibration, and the memory feature. It does **not** measure accuracy on real-world objects.

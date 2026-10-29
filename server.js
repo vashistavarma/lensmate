@@ -48,7 +48,7 @@ async function matchRefs(refs, image) {
       `Is a ${name} of the same kind as in image 1 clearly visible in image 2? Answer only YES or NO.`;
     const j = await (await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4 },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4 },
         messages: [{ role: 'user', content: prompt, images: [strip(r.image), strip(image)] }] }),
     })).json();
     if (/^\s*yes/i.test(j.message?.content || '')) hits.push(name);
@@ -73,7 +73,7 @@ async function chat(req, res) {
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, messages: msgs, stream: true, keep_alive: '10m' }),
+      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: '10m' }),
     });
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
     if (refs.length) res.write(JSON.stringify({ matched }) + '\n');
@@ -87,6 +87,9 @@ async function chat(req, res) {
 // Spatial grounding: ask the VLM for labelled boxes. Frames must be DET_W x DET_H (see app.js)
 // because Qwen2.5-VL returns pixel coords in the size Ollama resizes to, which equals this size.
 const DET = { w: 1204, h: 672 };
+const GROUND = process.env.GROUND || 'pixel'; // 'pixel' (Qwen2.5-VL) or 'norm1000' (Qwen3-VL): how the model reports box coordinates
+const toPixels = ([x1, y1, x2, y2]) => GROUND === 'norm1000'
+  ? [x1 * DET.w / 1000, y1 * DET.h / 1000, x2 * DET.w / 1000, y2 * DET.h / 1000].map(Math.round) : [x1, y1, x2, y2];
 async function detect(req, res) {
   let body = '';
   for await (const c of req) body += c;
@@ -97,7 +100,7 @@ async function detect(req, res) {
   try {
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, stream: false, keep_alive: '10m', options: { temperature: 0 },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0 },
         messages: [{ role: 'user', content: prompt, images: [image.replace(/^data:image\/\w+;base64,/, '')] }] }),
     });
     const text = (await r.json()).message?.content || '';
@@ -105,7 +108,7 @@ async function detect(req, res) {
     let boxes = [];
     try { boxes = JSON.parse(m ? m[0] : '[]'); } catch { boxes = []; }
     boxes = boxes.filter(b => Array.isArray(b.bbox_2d) && b.bbox_2d.length === 4)
-      .map(b => ({ label: String(b.label || 'object'), box: b.bbox_2d.map(Number) })).slice(0, 12);
+      .map(b => ({ label: String(b.label || 'object'), box: toPixels(b.bbox_2d.map(Number)) })).slice(0, 12);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ boxes, ...DET }));
   } catch (e) {
@@ -115,7 +118,7 @@ async function detect(req, res) {
 
 // Service status for the UI lights: is the vision model installed in Ollama, is the speech service up?
 async function health(res) {
-  const j = { model: MODEL, vision: false, speech: false };
+  const j = { model: MODEL, think: false, vision: false, speech: false };
   try {
     const t = await (await fetch(`${OLLAMA}/api/tags`, { signal: AbortSignal.timeout(1500) })).json();
     j.vision = (t.models || []).some(m => m.name === MODEL || m.name === MODEL + ':latest');
