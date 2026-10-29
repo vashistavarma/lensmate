@@ -18,7 +18,7 @@ No headset, no cloud API, no API bill: the vision-language model runs locally th
 | **Click-to-ask** | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | **Actions and recording** | Ask *"what am I doing?"* (last ~4 s from an in-browser rolling buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion is **measured in code**; the model gets 2-3 key frames plus that measurement. |
 | **Teach it** | Hold an object up and say *"this is an L298N motor driver"* (or *"remember this as …"*): it stores your words **and a photo**. Later, each taught photo is verified against the live view with a separate yes/no vision query, so it recognises the object on sight without false matches. A 🧠 panel shows and deletes what it knows. Up to 8 photos are stored and 3 are checked per question (~1.3 s each). |
-| **Voice** | Hold 🎤 or Space to talk. Two engines: Chrome's Web Speech API, or **🔒 offline mic** (the browser records, `faster-whisper` transcribes on your CPU in ~0.8 s). Taught object names are passed to Whisper as hotwords so it can spell words like "mecanum". |
+| **Voice** | Hold 🎤 or Space to talk. Two engines: Chrome's Web Speech API, or **🔒 offline mic** (the browser records, `faster-whisper` transcribes on your CPU in ~0.8 s). Replies are spoken by a **local neural voice** (Piper, ~0.15 s per sentence) when it is installed; otherwise the browser's voice is used, which in Chrome is an online Google voice. Taught object names are passed to Whisper as hotwords so it can spell words like "mecanum". |
 | **Chat history** | Like ChatGPT/Claude: ＋ New chat, ☰ a list of past chats to reopen, rename, delete or export (Markdown). Saved in the browser (up to 50 chats); your current chat survives a reload. |
 | **Companion** | A Three.js orb that idles, listens, thinks and talks, and flies next to whatever it labelled or you clicked. |
 | **Helpful UI** | Suggestion chips, a welcome message, service status lights (vision model, offline speech), and a pre-flight smoke test. |
@@ -40,6 +40,14 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # Ubuntu ma
 ./start.sh                # starts the speech service (faster-whisper small.en, CPU) and the web server
 ```
 The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic** in the app. In Firefox (no Web Speech API) it is the only mic option.
+
+**Local voice for spoken replies (optional but recommended):** without it Chrome speaks with an online Google voice, so the reply text leaves your computer.
+```bash
+.venv/bin/pip install piper-tts
+mkdir -p models/piper && cd models/piper
+for f in en_US-lessac-medium.onnx en_US-lessac-medium.onnx.json; do curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/$f; done
+```
+Restart `./start.sh`; `python3 eval/smoke.py` then reports `local voice: yes`.
 
 **Before a demo:** `python3 eval/smoke.py` runs a 30-second pre-flight check (services, a vision answer, grounding, and the tracker and motion unit tests).
 
@@ -126,11 +134,11 @@ Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md)
 - Action recognition was tested on **synthetic clips only**. The motion measure follows one blob (several moving things merge), cannot name gestures beyond direction and repetition, and its thresholds are untested on real webcam noise. The model sometimes repeats the measurement wording.
 - The tracker follows **translation only** (no scale/rotation), can drop a label if more than about half of the object is covered (for example by your hand), loses fast motion, and ignores featureless patches.
 - A webcam is not a headset: this is a mixed-reality *prototype* (virtual companion and anchored labels over a live camera feed), not spatial mapping.
-- Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine.
+- Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine. Spoken replies are local only if the Piper voice is installed.
 
 ## Privacy
 
-Vision and reasoning run locally. Chats, taught photos and facts are stored in your browser's `localStorage` (never uploaded). The 12-second action buffer lives in browser memory and frames are sent to the local model only when you ask. Nothing is written to disk unless you click *Save clip* or *Export*. `eval/real/` (your own test photos) is git-ignored.
+Vision and reasoning run locally. With the 🔒 offline mic ticked and the local Piper voice installed, nothing leaves your computer (`eval/local_only_test.py` checks that the page only ever talks to `localhost`); without the local voice, Chrome speaks replies with an online Google voice. Chats, taught photos and facts are stored in your browser's `localStorage` (never uploaded). The 12-second action buffer lives in browser memory and frames are sent to the local model only when you ask. Nothing is written to disk unless you click *Save clip* or *Export*. `eval/real/` (your own test photos) is git-ignored.
 
 ## Project layout
 

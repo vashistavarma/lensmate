@@ -12,7 +12,7 @@ def check(name, fn):
 
 def health():
     h = json.load(urllib.request.urlopen(BASE + '/api/health', timeout=10))
-    return h['vision'], f"vision model {h['model']}: {'ready' if h['vision'] else 'MISSING (ollama pull)'}; offline speech: {'up' if h['speech'] else 'not running (optional)'}"
+    return h['vision'], f"vision model {h['model']}: {'ready' if h['vision'] else 'MISSING (ollama pull)'}; offline speech: {'up' if h['speech'] else 'not running (optional)'}; local voice: {'yes' if h.get('tts') else 'no (Chrome would use an online Google voice)'}"
 def chat():
     r = post('/api/chat', dict(messages=[dict(role='user', content='What colour is the circle? One word.')], image=b64('images/colour.jpg')))
     text = ''.join(json.loads(l).get('message', {}).get('content', '') for l in r if l.strip())
