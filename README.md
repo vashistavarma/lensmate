@@ -93,6 +93,20 @@ Note on latency: the figures below are for fresh images. Re-sending an identical
 | Motion analysis | directions, waving, noise, camera pan, lighting ramp (`node eval/test_motion.js`) | **10/10** |
 | Tracker | single shifts, large catch-up, 20-frame chain, flat patch (`node eval/test_tracker.js`) | **8/8**; in-browser box within 2 px after an 80 px pan |
 
+## Speed
+
+A plain question starts answering in about **1.2 s** and finishes in about **1.7 s** (shorter default answers, model kept loaded for 2 hours and warmed at startup). The slow part used to be **taught objects**: each taught photo is verified with its own model call (~1.3 s each), and it ran *after* you asked. Now it runs *before*:
+
+| 3 taught photos, unique camera frame each time (`eval/latency_bench.py`) | First word | Total |
+|---|---|---|
+| Before: check at question time | 5.5 s | 6.3 s |
+| Now, cold, nothing recognised recently (checks the likeliest object first, stops at the first match) | 2.6-3.8 s | 3.1-4.3 s |
+| Now, cold, the object was recognised recently | 2.6 s | 3.1 s |
+| Now, you spoke or typed for a couple of seconds first (check starts on mic press or first key) | ~1.7 s | ~2.1 s |
+| Now, picture held still a few seconds (background check) | **1.3 s** | **1.7 s** |
+
+The browser keeps the result while the scene is unchanged, skips the check for questions it cannot help with (reading text, counting, colours), and the background check can be switched off with `localStorage.setItem('lensmate.autocheck', '0')`. Accuracy is unchanged (re-run: chat 5/5, detection 3/3 at IoU 0.96, taught-photo recognition 6/6 with 0 false claims, actions 6/6). Things I tried that did **not** help: running the checks in parallel (no gain, the GPU is the bottleneck), putting the live image first for cache reuse (accuracy fell from 18/20 to 14/20), Ollama flash attention with a compact KV cache (about 5% slower here), and the smaller `qwen2.5vl:3b` (only ~27% faster, but label detection fell to 0/3, taught-photo recognition to 0/6 and real photos to 0/8).
+
 ## What did not work first (and what I did about it)
 
 Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md). The short version:
@@ -131,6 +145,7 @@ public/motion.js     motion measurement for actions (pure, unit-tested)
 public/actions.js    rolling frame buffer, "what am I doing?" and "record"
 public/avatar.js     Three.js companion
 public/ui.js         modes, teach-me memory, memory panel, chips, service lights
+public/speed.js      latency: checks taught objects before you ask, caches the result
 public/sessions.js   chat history
 desktop/             Electron shell, setup screen and installer build (see desktop/README.md)
 eval/                benchmarks, unit tests, browser tests, smoke test

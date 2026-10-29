@@ -1,7 +1,7 @@
 """End-to-end action test: headless Chrome with a synthetic animated camera (a ball with known motion),
 the real app, the real `record for 4 seconds` command, motion analysis, and the vision model.
 Usage: .venv/bin/python eval/action_eval.py   (server running; needs websocket-client)"""
-import base64, json, subprocess, sys, time, urllib.request
+import base64, json, os, subprocess, sys, time, urllib.request
 import websocket
 
 CAMERA_JS = r"""(() => {
@@ -40,9 +40,9 @@ try:
             if r.get('id') == n: return r
     js = lambda e: call('Runtime.evaluate', expression=e, returnByValue=True)['result'].get('result', {}).get('value')
     call('Page.enable'); call('Page.addScriptToEvaluateOnNewDocument', source=CAMERA_JS)
-    call('Page.navigate', url='http://localhost:3000/'); time.sleep(3)
+    call('Page.navigate', url=os.environ.get('LENSMATE_URL', 'http://localhost:3000') + '/'); time.sleep(3)
     js("localStorage.clear(); localStorage.setItem('lensmate.mirror', '0')")  # these scenarios assume the un-mirrored view (see mirror_test.py)
-    call('Page.navigate', url='http://localhost:3000/'); time.sleep(3)
+    call('Page.navigate', url=os.environ.get('LENSMATE_URL', 'http://localhost:3000') + '/'); time.sleep(3)
     passed = 0
     for name, words in SCENARIOS:
         js("document.getElementById('newchat').click()"); time.sleep(0.3)

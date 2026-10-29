@@ -12,7 +12,7 @@ def b64(path, w=None):
     buf = io.BytesIO(); im.save(buf, 'JPEG', quality=85); return 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
 def ref(name, f): return dict(name=name, image=b64(os.path.join(REAL, f), 512))
 def ask(path, refs, q='What is this object? Name it specifically.'):
-    r = urllib.request.urlopen(urllib.request.Request('http://localhost:3000/api/chat', json.dumps(dict(
+    r = urllib.request.urlopen(urllib.request.Request(os.environ.get('LENSMATE_URL', 'http://localhost:3000') + '/api/chat', json.dumps(dict(
         messages=[dict(role='user', content=q)], image=b64(path), refs=refs)).encode(), {'Content-Type': 'application/json'}), timeout=300)
     return ''.join(json.loads(l).get('message', {}).get('content', '') for l in r if l.strip()).strip()
 R_M, R_D = ref('mecanum wheel', mec[0]), ref('motor driver', drv[0])

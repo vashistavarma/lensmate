@@ -11,11 +11,12 @@ const MODEL = process.env.MODEL || 'qwen2.5vl:7b';
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 
 const SYSTEM = 'You are LensMate, a friendly mixed-reality assistant. You see the user\'s ' +
-  'camera view through the attached image. Answer concisely (1-3 sentences) in plain speech, ' +
+  'camera view through the attached image. Answer in one or two short sentences (about 25 words) in plain speech, unless the user asks for detail; ' +
   'no markdown or lists. For objects you are unsure about, never just say you do not know: ' +
   'describe the visible cues (shape, labels, text, parts) and give your best guess, marked as ' +
   'a guess. If the user tells you what something is, trust them and remember it.';
 
+const KEEP = '2h'; // keep the model in GPU memory between questions: a cold start costs about 10 s
 const CTX = 8192; // one context size for every call: changing num_ctx between calls makes Ollama reload the model
 const MODES = {
   chat: '',
@@ -60,7 +61,7 @@ function serveStatic(req, res) {
 }
 
 const MAX_REFS = 3; // each reference costs one ~1.3 s yes/no check before the answer starts
-async function matchRefs(refs, image) {
+async function matchRefs(refs, image, stopAtFirst = false) {
   const strip = d => d.replace(/^data:image\/\w+;base64,/, '');
   const hits = [];
   for (const r of refs.slice(-MAX_REFS)) {
@@ -70,18 +71,30 @@ async function matchRefs(refs, image) {
       `Is a ${name} of the same kind as in image 1 clearly visible in image 2? Answer only YES or NO.`;
     const j = await (await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4, num_ctx: CTX },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: KEEP, options: { temperature: 0, num_predict: 4, num_ctx: CTX },
         messages: [{ role: 'user', content: prompt, images: [strip(r.image), strip(image)] }] }),
     })).json();
-    if (/^\s*yes/i.test(j.message?.content || '')) hits.push(name);
+    if (/^\s*yes/i.test(j.message?.content || '')) { hits.push(name); if (stopAtFirst) break; }
   }
   return hits;
+}
+
+// Taught-photo check on its own: the browser calls this while you are still speaking or typing, so the answer does not wait for it.
+async function match(req, res) {
+  const b = await readJSON(req);
+  const image = str(b.image);
+  if (!image) throw bad(400, 'image is required');
+  const t0 = Date.now();
+  const matched = await matchRefs(arr(b.refs), image, b.first === true); // first: stop at the first match (used when the user is already waiting)
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ matched, ms: Date.now() - t0 }));
 }
 
 async function chat(req, res) {
   const b = await readJSON(req);
   const messages = arr(b.messages), refs = arr(b.refs), facts = arr(b.facts);
   const frames = arr(b.frames).filter(f => typeof f === 'string');
+  const pre = Array.isArray(b.matched) ? b.matched.filter(s => typeof s === 'string').map(s => s.slice(0, 60)).slice(0, 5) : null; // taught objects the browser already verified
   const image = str(b.image) || undefined, mode = str(b.mode, 'chat'), motion = str(b.motion), seconds = Number(b.seconds) || 0;
   if (!messages.length || !messages.every(m => m && typeof m.role === 'string' && typeof m.content === 'string')) throw bad(400, 'messages must be a non-empty list of {role, content}');
   // Attach the current camera frame to the latest user message only (keeps context small).
@@ -105,13 +118,13 @@ async function chat(req, res) {
   try {
     // Visual memory: verify each taught reference photo against the live frame (yes/no), then tell the
     // model only the verified names. Verifying first avoids false matches (see eval/visual_memory_eval.py).
-    const matched = (image && !frames.length) ? await matchRefs(refs, image) : [];
+    const matched = pre || ((image && !frames.length) ? await matchRefs(refs, image) : []);
     if (matched.length) msgs[0].content += ' Verified by comparing with photos the user taught you, the camera view contains: ' +
       matched.join(', ') + '. Use these exact names for those objects.';
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: '10m', options: { num_ctx: CTX } }),
+      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: KEEP, options: { num_ctx: CTX, num_predict: frames.length ? 120 : (mode === 'chat' ? 110 : 220) } }), // caps stop rambling
       signal: ac.signal,
     });
     if (!r.ok) throw new Error('Ollama returned ' + r.status + ': ' + (await r.text()).slice(0, 200));
@@ -137,11 +150,11 @@ async function detect(req, res) {
   if (!image) throw bad(400, 'image is required');
   const target = query ? `Locate: ${query}. Only include matches.` : 'Locate every distinct, clearly visible object.';
   const prompt = `${target} Give each a short specific name (best guess if unsure, e.g. "ultrasonic sensor"). ` +
-    'Output only JSON: [{"bbox_2d":[x1,y1,x2,y2],"label":"name"}]. Output [] if nothing matches.' + factsText(facts);
+    'Output only compact JSON on a single line, no spaces or line breaks: [{"bbox_2d":[x1,y1,x2,y2],"label":"name"}]. Output [] if nothing matches.' + factsText(facts);
   try {
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: '10m', options: { temperature: 0, num_ctx: CTX },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: KEEP, options: { temperature: 0, num_ctx: CTX, num_predict: 400 },
         messages: [{ role: 'user', content: prompt, images: [image.replace(/^data:image\/\w+;base64,/, '')] }] }),
     });
     const text = (await r.json()).message?.content || '';
@@ -183,6 +196,7 @@ async function stt(req, res) {
 async function route(req, res) {
   if (req.method === 'GET' && req.url === '/api/health') return health(res);
   if (req.method === 'POST' && req.url.split('?')[0] === '/api/stt') return stt(req, res);
+  if (req.method === 'POST' && req.url === '/api/match') return match(req, res);
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);
   serveStatic(req, res);
@@ -194,4 +208,8 @@ http.createServer((req, res) => {
     if (status === 500) console.error('request failed:', e);
     fail(res, status, status === 500 ? 'internal server error' : e.message);
   });
-}).listen(PORT, HOST, () => console.log(`LensMate on http://${HOST}:${PORT} (model ${MODEL})`));
+}).listen(PORT, HOST, () => {
+  console.log(`LensMate on http://${HOST}:${PORT} (model ${MODEL})`);
+  // load the model now so the first question is not the slow one
+  fetch(`${OLLAMA}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: MODEL, prompt: '', keep_alive: KEEP, options: { num_ctx: CTX } }) }).catch(() => {});
+});

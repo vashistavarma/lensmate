@@ -1,7 +1,7 @@
 """Mirror-view test in a real browser with a synthetic camera: a red ball sits on the TRUE left of the camera frame.
 With the mirror on it must appear on the right of the screen, and clicks, labels and motion wording must follow the screen.
 Usage: .venv/bin/python eval/mirror_test.py   (server running; needs websocket-client)"""
-import json, subprocess, sys, time, urllib.request
+import json, os, subprocess, sys, time, urllib.request
 import websocket
 
 CAMERA_JS = r"""(() => {
@@ -35,7 +35,7 @@ try:
     js = lambda e: call('Runtime.evaluate', expression=e, returnByValue=True, awaitPromise=True)['result'].get('result', {}).get('value')
     def load(mirror):
         js("localStorage.clear(); localStorage.setItem('lensmate.mirror','%s')" % ('1' if mirror else '0'))
-        call('Page.navigate', url='http://localhost:3000/'); time.sleep(3.5)
+        call('Page.navigate', url=os.environ.get('LENSMATE_URL', 'http://localhost:3000') + '/'); time.sleep(3.5)
         js("window.__sc = { name: 'left', t0: performance.now() }")
     def wait_reply(prefix):
         for _ in range(80):
