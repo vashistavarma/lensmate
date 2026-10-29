@@ -35,4 +35,24 @@ const other = scene(); const lost = T.track(base, other, w, h, box, 6);
 check('unrelated scene -> high cost', lost.cost > LOST_COST, `cost=${lost.cost.toFixed(1)}`);
 const flat = new Uint8Array(w * h).fill(128);
 check('flat patch -> cost null, box unchanged', T.track(flat, flat, w, h, box).cost === null);
+
+// --- is the object still under the box? (anchor correlation) ---
+{
+  const A = T.patch(base, w, h, box);
+  check('anchor: same object, new noise -> high correlation', T.anchorScore(shift(base, 0, 0, 6), w, h, box, A) > 0.9, 'score ' + T.anchorScore(shift(base, 0, 0, 6), w, h, box, A).toFixed(2));
+  const dim = Uint8Array.from(base, v => v * 0.6);
+  check('anchor: brightness change is ignored', T.anchorScore(dim, w, h, box, A) > 0.9, 'score ' + T.anchorScore(dim, w, h, box, A).toFixed(2));
+  const moved = shift(base, 5, -3); const tr = T.track(base, moved, w, h, box, 6);
+  check('anchor: after the tracker follows a move, still matches', T.anchorScore(moved, w, h, tr.box, A) > 0.9, 'score ' + T.anchorScore(moved, w, h, tr.box, A).toFixed(2));
+  const other = scene();                      // a different texture under the same box: the object left, something else is there
+  check('anchor: different content under the box -> low', T.anchorScore(other, w, h, box, A) < 0.3, 'score ' + T.anchorScore(other, w, h, box, A).toFixed(2));
+  const dark = new Uint8Array(w * h).fill(20); for (let i = 0; i < dark.length; i++) dark[i] += rnd() * 3; // plain dark cloth behind a textured object
+  check('anchor: object replaced by a flat dark region -> 0', T.anchorScore(dark, w, h, box, A) === 0);
+  const half = Uint8Array.from(base); for (let y = box[1]; y < box[3]; y++) for (let x = box[0]; x < (box[0] + box[2]) / 2; x++) half[y * w + x] = other[y * w + x];
+  const sHalf = T.anchorScore(half, w, h, box, A);
+  check('anchor: half covered keeps the label (above the 0.4 limit)', sHalf > 0.4 && sHalf < 0.9, 'score ' + sHalf.toFixed(2));
+  const flatA = T.patch(new Uint8Array(w * h).fill(128), w, h, box);
+  check('anchor: flat object cannot be judged -> null', T.anchorScore(base, w, h, box, flatA) === null);
+  check('anchor: box pushed out of the picture -> 0', T.anchorScore(base, w, h, [w - 10, 60, w + 40, 110], A) === 0);
+}
 process.exit(fails ? 1 : 0);

@@ -2,7 +2,9 @@
 // draws them over the live video. A lightweight tracker (tracker.js) keeps them on the objects.
 const overlay = document.getElementById('overlay');
 const DET_W = 1204, DET_H = 672; // must match the server (see detect() in server.js)
-const LOST_COST = 16, MAX_MISS = 8, LABEL_TTL_MS = 60000; // see eval/test_tracker.js for the threshold
+const LOST_COST = 16, MAX_MISS = 8;
+const LABEL_TTL_MS = 20000;               // a label never outlives this, even if it still seems to match
+const ANCHOR_MIN = 0.4, ANCHOR_BLEND = 0.8, GONE_TICKS = 10; // object 'gone': correlation with its detected look < 0.4 for 10 ticks (~0.5 s)
 let clearTimer, tracks = [], prevGray = null, trackRaf = 0, lastTick = 0;
 const gctx = Object.assign(document.createElement('canvas'), { width: LensTracker.TW, height: LensTracker.TH }).getContext('2d', { willReadFrequently: true });
 const S = LensTracker.SCALE;
@@ -28,7 +30,7 @@ function startTracking(boxes, gray0) {
   tracks = boxes.map(b => {
     const box = b.box.map(v => v / S);
     const r = gray0 && cur ? LensTracker.track(gray0, cur, LensTracker.TW, LensTracker.TH, box, 20) : { box };
-    return { label: b.label, target: r.box, shown: r.box.slice(), miss: 0 };
+    return { label: b.label, target: r.box, shown: r.box.slice(), miss: 0, gone: 0, anchor: cur ? LensTracker.patch(cur, LensTracker.TW, LensTracker.TH, r.box) : null };
   });
   prevGray = cur; lastTick = 0;
   cancelAnimationFrame(trackRaf); trackRaf = requestAnimationFrame(tick);
@@ -43,10 +45,15 @@ function tick(ts) {
     if (cur && prevGray) {
       for (const t of tracks) {
         const r = LensTracker.track(prevGray, cur, LensTracker.TW, LensTracker.TH, t.target, 6);
-        if (r.cost === null) continue;                     // untextured patch: keep the box where it is
-        if (r.cost > LOST_COST) t.miss++; else { t.miss = 0; t.target = r.box; }
+        if (r.cost !== null) { if (r.cost > LOST_COST) t.miss++; else { t.miss = 0; t.target = r.box; } } // cost null: untextured, box stays
+        // is the detected object still there? (the box may be following the background after the object left)
+        const sc = LensTracker.anchorScore(cur, LensTracker.TW, LensTracker.TH, t.target, t.anchor);
+        if (sc !== null) {
+          if (sc < ANCHOR_MIN) t.gone++;
+          else { t.gone = 0; if (sc > ANCHOR_BLEND) LensTracker.blendAnchor(t.anchor, cur, LensTracker.TW, t.target, 0.15); }
+        }
       }
-      tracks = tracks.filter(t => t.miss < MAX_MISS);      // object left the view or the scene changed
+      tracks = tracks.filter(t => t.miss < MAX_MISS && t.gone < GONE_TICKS); // object left the view, was replaced, or the scene changed
       if (!tracks.length) return clearOverlay();
     }
     prevGray = cur;

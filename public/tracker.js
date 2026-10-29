@@ -40,6 +40,45 @@ const LensTracker = (() => {
     return { box: [x1 + bdx, y1 + bdy, x2 + bdx, y2 + bdy], cost: bestCost };
   }
 
-  return { SCALE, TW, TH, toGray, track };
+  // --- "is the object still under the box?" ---
+  // The frame-to-frame tracker alone follows whatever is under the box, even after the object has left (for example a
+  // black shirt behind a black battery). So each label also remembers how its object looked when it was detected, and
+  // anchorScore() compares that to what is under the box NOW with normalised correlation (insensitive to brightness).
+  const FLAT_VAR = 30; // a patch with less pixel variance than this has no structure to compare
+
+  function patch(gray, w, h, box) { // copy of the region under a box, as the label's reference appearance
+    const x1 = Math.max(0, Math.round(box[0])), y1 = Math.max(0, Math.round(box[1]));
+    const x2 = Math.min(w, Math.round(box[2])), y2 = Math.min(h, Math.round(box[3]));
+    const pw = Math.max(0, x2 - x1), ph = Math.max(0, y2 - y1), data = new Float32Array(pw * ph);
+    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) data[y * pw + x] = gray[(y1 + y) * w + x1 + x];
+    return { w: pw, h: ph, data };
+  }
+
+  // Correlation (-1..1) between the stored appearance and the current region; null when it cannot be judged.
+  function anchorScore(gray, w, h, box, anchor) {
+    if (!anchor || anchor.w < 8 || anchor.h < 8) return null;
+    const x1 = Math.round(box[0]), y1 = Math.round(box[1]);
+    if (x1 < 0 || y1 < 0 || x1 + anchor.w > w || y1 + anchor.h > h) return 0; // pushed out of the picture
+    let sa = 0, sc = 0, n = 0;
+    for (let y = 0; y < anchor.h; y += 2) for (let x = 0; x < anchor.w; x += 2) { sa += anchor.data[y * anchor.w + x]; sc += gray[(y1 + y) * w + x1 + x]; n++; }
+    const ma = sa / n, mc = sc / n; let va = 0, vc = 0, cov = 0;
+    for (let y = 0; y < anchor.h; y += 2) for (let x = 0; x < anchor.w; x += 2) {
+      const a = anchor.data[y * anchor.w + x] - ma, c = gray[(y1 + y) * w + x1 + x] - mc; va += a * a; vc += c * c; cov += a * c;
+    }
+    va /= n; vc /= n;
+    if (va < FLAT_VAR) return null;          // the object itself had no structure: cannot tell
+    if (vc < FLAT_VAR) return 0;             // it had structure, the region is now flat: the object is gone
+    return cov / n / Math.sqrt(va * vc);
+  }
+
+  function blendAnchor(anchor, gray, w, box, alpha) { // follow slow changes (rotation, lighting) without forgetting the object
+    const x1 = Math.round(box[0]), y1 = Math.round(box[1]);
+    if (!anchor || x1 < 0 || y1 < 0) return;
+    for (let y = 0; y < anchor.h; y++) for (let x = 0; x < anchor.w; x++) {
+      const i = y * anchor.w + x; anchor.data[i] += alpha * (gray[(y1 + y) * w + x1 + x] - anchor.data[i]);
+    }
+  }
+
+  return { SCALE, TW, TH, toGray, track, patch, anchorScore, blendAnchor };
 })();
 if (typeof module !== 'undefined') module.exports = LensTracker;
