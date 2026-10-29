@@ -35,20 +35,46 @@ function serveStatic(req, res) {
   });
 }
 
+const MAX_REFS = 3; // each reference costs one ~1.3 s yes/no check before the answer starts
+async function matchRefs(refs, image) {
+  const strip = d => d.replace(/^data:image\/\w+;base64,/, '');
+  const hits = [];
+  for (const r of refs.slice(-MAX_REFS)) {
+    if (!r || !r.image || !r.name) continue;
+    const name = String(r.name).replace(/[\r\n"]/g, ' ').slice(0, 60);
+    const prompt = `Image 1 is a reference photo of a ${name}. Image 2 is a live camera view. ` +
+      `Is a ${name} of the same kind as in image 1 clearly visible in image 2? Answer only YES or NO.`;
+    const j = await (await fetch(`${OLLAMA}/api/chat`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: MODEL, stream: false, keep_alive: '10m', options: { temperature: 0, num_predict: 4 },
+        messages: [{ role: 'user', content: prompt, images: [strip(r.image), strip(image)] }] }),
+    })).json();
+    if (/^\s*yes/i.test(j.message?.content || '')) hits.push(name);
+  }
+  return hits;
+}
+
 async function chat(req, res) {
   let body = '';
   for await (const c of req) body += c;
-  const { messages = [], image, mode = 'chat', facts = [] } = JSON.parse(body);
+  const { messages = [], image, mode = 'chat', facts = [], refs = [] } = JSON.parse(body);
   // Attach the current camera frame to the latest user message only (keeps context small).
   const msgs = [{ role: 'system', content: SYSTEM + (MODES[mode] || '') + factsText(facts) }, ...messages];
-  if (image) msgs[msgs.length - 1].images = [image.replace(/^data:image\/\w+;base64,/, '')];
+  const strip = d => d.replace(/^data:image\/\w+;base64,/, '');
+  if (image) msgs[msgs.length - 1].images = [strip(image)];
   try {
+    // Visual memory: verify each taught reference photo against the live frame (yes/no), then tell the
+    // model only the verified names. Verifying first avoids false matches (see eval/visual_memory_eval.py).
+    const matched = image ? await matchRefs(refs, image) : [];
+    if (matched.length) msgs[0].content += ' Verified by comparing with photos the user taught you, the camera view contains: ' +
+      matched.join(', ') + '. Use these exact names for those objects.';
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: MODEL, messages: msgs, stream: true, keep_alive: '10m' }),
     });
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
+    if (refs.length) res.write(JSON.stringify({ matched }) + '\n');
     for await (const chunk of r.body) res.write(chunk);
     res.end();
   } catch (e) {

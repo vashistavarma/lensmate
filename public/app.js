@@ -37,7 +37,7 @@ async function ask(question) {
   const t0 = performance.now();
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, image: grabFrame(), mode: window.lensMode?.(), facts: window.lensFacts?.() }),
+    body: JSON.stringify({ messages: history, image: grabFrame(), mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: window.lensRefs?.() }),
   });
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = '';
@@ -49,6 +49,7 @@ async function ask(question) {
     for (const l of lines.filter(Boolean)) {
       const j = JSON.parse(l);
       if (j.error) { bubble.textContent = '⚠ ' + j.error; return; }
+      if (j.matched) { status.textContent = j.matched.length ? '🧠 recognised: ' + j.matched.join(', ') : 'no taught object in view'; continue; }
       answer += j.message?.content || '';
       bubble.textContent = answer;
       window.onBotText?.(answer, false);
