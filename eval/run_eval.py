@@ -1,4 +1,6 @@
 """Run cases.json against a running LensMate server and report accuracy + latency."""
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))  # paths below are relative to eval/
 import base64, json, statistics, sys, time, urllib.request
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:3000'

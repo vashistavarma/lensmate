@@ -1,5 +1,7 @@
 """Generate a small synthetic benchmark (images + cases.json). Add your own real photos
 (use the 📷 button in the app) by appending entries to cases.json: same format."""
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))  # paths below are relative to eval/
 import json
 from PIL import Image, ImageDraw, ImageFont
 

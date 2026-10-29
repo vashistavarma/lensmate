@@ -16,9 +16,9 @@ No headset, no cloud API, no API bill: the vision-language model runs locally th
 | **Spatial labels** | `find my keys`, `label everything`: the model returns bounding boxes (grounding) and neon labels are drawn over the video. A lightweight block-matching tracker keeps each label on its object at ~20 fps, after first catching it up for the 1-3 s the model took to answer. |
 | **Click-to-ask** | Click any object in the video: LensMate zooms into that spot (a crop at the camera's native resolution, so small parts get more pixels), identifies it, and the companion flies there. |
 | **Actions and recording** | Ask *"what am I doing?"* (last ~4 s from an in-browser rolling buffer) or say *"record for 5 seconds"* (records, keeps a downloadable `.webm`, then describes what happened). Motion is **measured in code**; the model gets 2-3 key frames plus that measurement. |
-| **Teach it** | Hold an object up and say *"this is an L298N motor driver"* (or *"remember this as …"*): it stores your words **and a photo**. Later, each taught photo is verified against the live view with a separate yes/no vision query, so it recognises the object on sight without false matches. A 🧠 panel shows and deletes what it knows. |
+| **Teach it** | Hold an object up and say *"this is an L298N motor driver"* (or *"remember this as …"*): it stores your words **and a photo**. Later, each taught photo is verified against the live view with a separate yes/no vision query, so it recognises the object on sight without false matches. A 🧠 panel shows and deletes what it knows. Up to 8 photos are stored and 3 are checked per question (~1.3 s each). |
 | **Voice** | Hold 🎤 or Space to talk. Two engines: Chrome's Web Speech API, or **🔒 offline mic** (the browser records, `faster-whisper` transcribes on your CPU in ~0.8 s). Taught object names are passed to Whisper as hotwords so it can spell words like "mecanum". |
-| **Chat history** | Like ChatGPT/Claude: ＋ New chat, ☰ a list of past chats to reopen, rename, delete or export (Markdown). Saved in the browser; your current chat survives a reload. |
+| **Chat history** | Like ChatGPT/Claude: ＋ New chat, ☰ a list of past chats to reopen, rename, delete or export (Markdown). Saved in the browser (up to 50 chats); your current chat survives a reload. |
 | **Companion** | A Three.js orb that idles, listens, thinks and talks, and flies next to whatever it labelled or you clicked. |
 | **Helpful UI** | Suggestion chips, a welcome message, service status lights (vision model, offline speech), and a pre-flight smoke test. |
 
@@ -42,7 +42,7 @@ The first start downloads the Whisper model (~460 MB). Tick **🔒 offline mic**
 
 **Before a demo:** `python3 eval/smoke.py` runs a 30-second pre-flight check (services, a vision answer, grounding, and the tracker and motion unit tests).
 
-Options: `PORT`, `HOST` (default `127.0.0.1`: camera frames and your GPU are not exposed to the network), `MODEL`, `GROUND`, `STT_URL`.
+Options (environment variables): `PORT` (3000), `HOST` (default `127.0.0.1`: camera frames and your GPU are not exposed to the network), `MODEL` (`qwen2.5vl:7b`), `GROUND` (`pixel`, or `norm1000` for Qwen3-VL), `OLLAMA_URL`, `STT_URL`; for the speech service `WHISPER_MODEL` (`small.en`) and `STT_PORT` (3001). The server answers malformed requests with 400/413 errors instead of crashing, and stops generating if the browser disconnects.
 
 ## Things to say or do
 
@@ -61,7 +61,17 @@ Options: `PORT`, `HOST` (default `127.0.0.1`: camera frames and your GPU are not
 
 ## Evaluation
 
-Everything below is reproducible from `eval/` (see the commands). Numbers are from the final code on an RTX 5060 Laptop (8 GB).
+Everything below is reproducible from `eval/`. Numbers are from the final code on an RTX 5060 Laptop (8 GB). Run these from the repo root with the server running:
+
+```bash
+.venv/bin/pip install -r eval/requirements.txt                       # Pillow, websocket-client, Piper (eval only)
+node eval/test_tracker.js && node eval/test_motion.js                # unit tests (no GPU needed)
+.venv/bin/python eval/make_cases.py && .venv/bin/python eval/run_eval.py   # synthetic benchmark
+.venv/bin/python eval/action_eval.py                                 # actions (needs Chrome)
+.venv/bin/python eval/stt_eval.py path/to/en_US-lessac-medium.onnx   # offline speech (a Piper voice file)
+google-chrome --headless=new --virtual-time-budget=6000 --dump-dom file://$PWD/eval/track_page.html | grep -o "<title>.*</title>"   # tracker in a browser
+```
+The real-photo scripts (`real_eval.py`, `visual_memory_eval.py`) need your own labelled snapshots: see below.
 
 | Area | Test | Result |
 |---|---|---|
@@ -124,6 +134,10 @@ docs/                architecture diagram, design notes, live-demo runbook, Link
 ## Roadmap
 
 Tracking with scale and re-detection; a larger or fine-tuned vision model; real-webcam tuning of the motion thresholds and a gesture classifier; a WebXR build for a Quest headset; visual memory by embedding similarity instead of per-photo checks.
+
+## Acknowledgements
+
+Built on open-source work: [Ollama](https://ollama.com) and the Qwen2.5-VL model, [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [Three.js](https://threejs.org), and [Piper](https://github.com/rhasspy/piper) (used only to synthesise speech for the evaluation). Each keeps its own license; check them before redistributing models or voices.
 
 ## License
 

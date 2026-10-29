@@ -1,0 +1,4 @@
+# extra packages for the evaluation scripts (the app itself needs none of these)
+pillow
+websocket-client
+piper-tts
