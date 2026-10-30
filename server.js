@@ -9,6 +9,7 @@ const HOST = process.env.HOST || '127.0.0.1'; // localhost only: the camera fram
 const STT = process.env.STT_URL || 'http://127.0.0.1:3001'; // offline speech service (stt_server.py)
 const OLLAMA = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 const MODEL = process.env.MODEL || 'qwen2.5vl:7b';
+const WEB_MODEL = process.env.WEB_MODEL || MODEL; // model that reads live web data (text only, so it can be a different one)
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 
 const SYSTEM = 'You are LensMate, a friendly mixed-reality assistant. You see the user\'s ' +
@@ -148,10 +149,12 @@ async function chat(req, res) {
     const matched = pre || ((image && !frames.length) ? await matchRefs(refs, image) : []);
     if (matched.length) msgs[0].content += ' Verified by comparing with photos the user taught you, the camera view contains: ' +
       matched.join(', ') + '. Use these exact names for those objects.';
+    const useWeb = live && !live.error && live.kind !== 'off';   // answering from live data: text only, by WEB_MODEL
+    if (useWeb) msgs[msgs.length - 1].images = undefined;
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, think: false, messages: msgs, stream: true, keep_alive: KEEP, options: { num_ctx: CTX, num_predict: frames.length ? 120 : (mode === 'chat' ? 110 : 220) } }), // caps stop rambling
+      body: JSON.stringify({ model: useWeb ? WEB_MODEL : MODEL, think: false, messages: msgs, stream: true, keep_alive: KEEP, options: { num_ctx: CTX, num_predict: frames.length ? 120 : (useWeb ? 160 : mode === 'chat' ? 110 : 220), temperature: useWeb ? 0.1 : undefined } }), // caps stop rambling
       signal: ac.signal,
     });
     if (!r.ok) throw new Error('Ollama returned ' + r.status + ': ' + (await r.text()).slice(0, 200));
