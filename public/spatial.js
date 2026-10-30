@@ -144,6 +144,7 @@ function cropAround(fx, fy) { // fx, fy in 0..1 of the video; returns a 1204x672
 wrapEl.addEventListener('click', e => {
   if (!cam.videoWidth) return;
   const r = wrapEl.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+  if (window.lensWorld?.placing) { const res = window.lensWorld.place(px, py); const ring0 = document.createElement('div'); ring0.className = 'ping'; ring0.style.left = px + 'px'; ring0.style.top = py + 'px'; wrapEl.append(ring0); setTimeout(() => ring0.remove(), 1300); status.textContent = res.perched ? `perched on the ${res.perched}` : 'companion placed'; return; } // placing mode: this click sets the companion's spot instead of asking a question
   const ring = document.createElement('div'); ring.className = 'ping'; ring.style.left = px + 'px'; ring.style.top = py + 'px';
   wrapEl.append(ring); setTimeout(() => ring.remove(), 1300);
   window.dispatchEvent(new CustomEvent('lens-point', { detail: { x: px, y: py } })); // companion flies to the click

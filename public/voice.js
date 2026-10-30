@@ -16,6 +16,17 @@ fetch('/api/health').then(r => r.json()).then(h => { localTts = !!h.tts; }).catc
 let audioCtx = null, ttsGen = 0, playChain = Promise.resolve(), ttsPending = 0, currentSrc = null;
 const actx = () => { audioCtx ||= new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; };
 
+let analyser = null, lvBuf = null;                                   // the mouth follows the loudness of the local voice
+function levelNode() {
+  if (!analyser) { analyser = actx().createAnalyser(); analyser.fftSize = 512; analyser.connect(actx().destination); lvBuf = new Uint8Array(analyser.fftSize); }
+  return analyser;
+}
+window.lensVoiceLevel = () => {                                       // 0..1, 0 when nothing local is playing
+  if (!analyser || !currentSrc) return 0;
+  analyser.getByteTimeDomainData(lvBuf);
+  let s = 0; for (let i = 0; i < lvBuf.length; i++) { const v = (lvBuf[i] - 128) / 128; s += v * v; }
+  return Math.min(1, Math.sqrt(s / lvBuf.length) * 4);
+};
 function speakBrowser(text) { const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u); }
 function speakLocal(text) {
   const gen = ttsGen; ttsPending++;
@@ -28,7 +39,7 @@ function speakLocal(text) {
       const buf = await audio;
       if (gen !== ttsGen) return;                                   // interrupted while waiting
       await new Promise(res => {
-        const src = actx().createBufferSource(); src.buffer = buf; src.connect(actx().destination); currentSrc = src;
+        const src = actx().createBufferSource(); src.buffer = buf; src.connect(levelNode()); currentSrc = src;
         src.onended = res; src.start();
         setTimeout(res, buf.duration * 1000 + 800);               // watchdog: with no working audio output "ended" may never fire; never stall the queue
       });

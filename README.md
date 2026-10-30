@@ -69,6 +69,7 @@ Options (environment variables): `PORT` (3000), `HOST` (default `127.0.0.1`: cam
 | "What am I doing?" | Describes your action from the last ~4 s |
 | "Record for 5 seconds" | Records, saves a clip, describes the action |
 | "Clear" | Removes labels |
+| 📍 / "Sit here" / "Sit on the cup" | Places the companion on a spot (or perches it on a labelled object); it then stays there when you pan the camera. "Go back" returns it to the corner |
 
 ## Evaluation
 
@@ -133,6 +134,7 @@ Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md)
 - Visual-memory tests use reference and test photos from the same room and lighting, so they are optimistic.
 - Action recognition was tested on **synthetic clips only**. The motion measure follows one blob (several moving things merge), cannot name gestures beyond direction and repetition, and its thresholds are untested on real webcam noise. The model sometimes repeats the measurement wording.
 - The tracker follows **translation only** (no scale/rotation), can drop a label if more than about half of the object is covered (for example by your hand), loses fast motion, and ignores featureless patches.
+- The companion's "stay in the room" is a **2-D world lock**: it follows the picture's sideways/up-down motion (measured from the video), so it stays on its spot when you pan. It has no depth, no rotation or zoom handling, and slides off if the camera moves a lot or the scene has no texture (then it hops back after ~2.5 s). "In front of" is an approximation: where the picture changed at its spot, the live video is drawn over it. Tested on synthetic panning, not yet on your webcam.
 - A webcam is not a headset: this is a mixed-reality *prototype* (virtual companion and anchored labels over a live camera feed), not spatial mapping.
 - Chrome's built-in speech recognition sends audio to a cloud service. Tick **🔒 offline mic** to keep audio on the machine. Spoken replies are local only if the Piper voice is installed.
 
