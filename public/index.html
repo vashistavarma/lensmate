@@ -19,6 +19,7 @@
   #wrap { position:relative; width:min(100cqw, 177.78cqh); aspect-ratio:16/9; }
   #avatar { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
   #wrap { cursor:crosshair; }
+  .websrc { font-size:11px; color:var(--muted); margin:-4px 0 8px 4px; } .websrc a { color:var(--accent); }
   .ping { position:absolute; width:46px; height:46px; margin:-23px 0 0 -23px; border:3px solid var(--accent); border-radius:50%; pointer-events:none; animation:ping 1.2s ease-out forwards; }
   @keyframes ping { from { transform:scale(.4); opacity:1; } to { transform:scale(1.6); opacity:0; } }
   #overlay { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
@@ -70,7 +71,7 @@
 <body>
 <div id="stage"><div id="wrap"><video id="cam" autoplay playsinline muted></video><canvas id="overlay"></canvas><canvas id="avatar"></canvas></div><div id="status">starting camera…</div></div>
 <aside>
-  <h1><button id="menu" type="button" class="icon" title="Chat history">☰</button><button id="newchat" type="button" class="icon" title="New chat">＋</button> <span>Lens</span>Mate · mixed reality chat <span style="float:right;font-size:12px;color:var(--muted)"><label title="Record in the browser and transcribe on this computer (faster-whisper)"><input type="checkbox" id="offline" style="flex:none"> 🔒 offline mic</label> &nbsp; <label><input type="checkbox" id="speak" checked style="flex:none"> 🔊</label></span></h1>
+  <h1><button id="menu" type="button" class="icon" title="Chat history">☰</button><button id="newchat" type="button" class="icon" title="New chat">＋</button> <span>Lens</span>Mate · mixed reality chat <span style="float:right;font-size:12px;color:var(--muted)"><label title="Record in the browser and transcribe on this computer (faster-whisper)"><input type="checkbox" id="offline" style="flex:none"> 🔒 offline mic</label> &nbsp; <label title="Let LensMate look things up online (news, weather, facts). Only the short search text is sent, never the camera picture. Off = nothing leaves this computer."><input type="checkbox" id="webbox" style="flex:none"> 🌐 web</label> &nbsp; <label><input type="checkbox" id="speak" checked style="flex:none"> 🔊</label></span></h1>
   <div id="bar">
     <select id="mode" title="Response mode">
       <option value="chat">💬 Chat</option><option value="explain">🎓 Explain</option>
@@ -99,6 +100,7 @@
 <script src="voice.js"></script>
 <script src="tracker.js"></script>
 <script src="spatial.js"></script>
+<script src="web.js"></script>
 <script src="ui.js"></script>
 <script src="sessions.js"></script>
 <script src="motion.js"></script>

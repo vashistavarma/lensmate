@@ -2,6 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const web = require('./web');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '127.0.0.1'; // localhost only: the camera frames and the GPU are not exposed to the LAN
@@ -116,6 +117,29 @@ async function chat(req, res) {
     msgs = [{ role: 'system', content: systemFor(mode) + (MODES[mode] || '') + factsText(facts) }, ...messages];
     if (image) msgs[msgs.length - 1].images = [strip(image)];
   }
+  // Real-time data. The clock is always available (no network). Web lookups only when the browser says the user switched 🌐 on.
+  let live = null;
+  if (!frames.length) {
+    const last = msgs[msgs.length - 1], q = last.content;
+    if (web.wantsTime(q)) last.content += `\n\n[The computer's clock says it is ${web.nowText()}.]`;
+    else if (b.web === true) {
+      const p = web.plan(q);
+      if (p?.kind === 'weather' && !p.place && typeof b.place === 'string' && b.place.trim()) p.place = b.place.trim().slice(0, 60);
+      if (p) {
+        live = await web.lookup(p, async t => { // turn the (possibly follow-up) question into a short search query, with the local model
+          const prior = messages.slice(-5, -1).map(m => m.role + ': ' + m.content.slice(0, 150)).join('\n');
+          const r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
+            body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: KEEP, options: { num_ctx: CTX, num_predict: 24, temperature: 0 },
+              messages: [{ role: 'user', content: `Write a short web search query (at most 8 words, no quotes) that finds the answer to the last question.${prior ? '\nChat so far:\n' + prior : ''}\nLast question: ${t}\nQuery:` }] }) });
+          const j = await r.json(); return (j.message?.content || '').split('\n')[0].replace(/^["'\s]+|["'\s]+$/g, '').slice(0, 100);
+        });
+        last.content += live.error ? `\n\n[The live lookup failed: ${live.error}. Tell the user that briefly.]` : web.wrap(live);
+      } 
+    } else if (web.plan(q)) { // looks like it needs live data but 🌐 is off: say so instead of guessing from old training data
+      last.content += '\n\n[Live web access is switched off, so you cannot look this up. Say so in one sentence and mention the user can switch on the 🌐 button. Do not guess current facts.]';
+      live = { kind: 'off' };
+    }
+  }
   const ac = new AbortController();           // stop generating if the browser goes away (e.g. new chat, closed tab)
   res.on('close', () => ac.abort());
   try {
@@ -133,6 +157,7 @@ async function chat(req, res) {
     if (!r.ok) throw new Error('Ollama returned ' + r.status + ': ' + (await r.text()).slice(0, 200));
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
     if (refs.length) res.write(JSON.stringify({ matched }) + '\n');
+    if (live) res.write(JSON.stringify({ web: live.kind === 'off' ? { off: true } : live.error ? { error: live.error, kind: live.kind } : { kind: live.kind, query: live.query, sources: live.sources } }) + '\n');
     for await (const chunk of r.body) res.write(chunk);
     res.end();
   } catch (e) {

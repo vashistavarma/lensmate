@@ -69,6 +69,7 @@ Options (environment variables): `PORT` (3000), `HOST` (default `127.0.0.1`: cam
 | "What am I doing?" | Describes your action from the last ~4 s |
 | "Record for 5 seconds" | Records, saves a clip, describes the action |
 | "Clear" | Removes labels |
+| 🌐 web switch, then "Who is the current prime minister of Japan?" / "Weather in Tokyo" / "Search for ..." | Looks it up online and answers from the result, naming the source (links shown under the answer). "What time is it?" uses the computer clock and needs no switch. "Set my location to Berlin" remembers a place for weather |
 
 ## Evaluation
 
@@ -127,6 +128,8 @@ Full notes with measurements are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md)
 - **Whisper heard "mecanum" as "mechanism."** Passing taught names as hotwords fixed it.
 
 ## Honest limitations
+
+- **Real-time data is opt-in and online.** With 🌐 off (default) nothing leaves the computer. With it on, only a short search text (never the camera picture) goes to Open-Meteo (weather), Google News' RSS feed and Wikipedia. The local 7B model reads the results and sometimes misses the answer: asked "who won the latest F1 race?" it said the winner was not mentioned although a headline named him (and once, with a noisier source list, named the wrong driver). It says where the answer came from, so you can check the links. The "runs entirely offline" claim holds only with 🌐 off.
 
 - The benchmark is **synthetic** where noted. Real-object evidence is **8 photos of 2 objects**: indicative, not precise.
 - A 7B local model **does not know niche hardware by name** (mecanum wheel, motor driver). Teaching fixes the *name*, not the model's *knowledge* about the object (it once explained a mecanum wheel as a "caster wheel").

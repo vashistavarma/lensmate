@@ -27,6 +27,14 @@ function addMsg(text, cls) {
   return d;
 }
 
+function showWeb(bubble, w) { // a small line under the answer: what was looked up, and where from (or why not)
+  const note = document.createElement('div'); note.className = 'websrc';
+  if (w.off) note.textContent = '🌐 web is off: switch it on to look this up';
+  else if (w.error) note.textContent = '🌐 lookup failed: ' + w.error;
+  else { note.append('🌐 looked up "' + w.query + '" · '); w.sources.slice(0, 3).forEach((s, i) => { const a = document.createElement('a'); a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = new URL(s.url).hostname.replace(/^www\./, ''); if (i) note.append(', '); note.append(a); }); }
+  bubble.after(note); status.textContent = w.off || w.error ? 'no web data' : '🌐 used live data';
+}
+
 async function ask(question, imageOverride) {
   addMsg(question, 'user');
   window.dispatchEvent(new CustomEvent('lens-state', { detail: 'thinking' }));
@@ -43,7 +51,7 @@ async function ask(question, imageOverride) {
   if (mi && !mi.skipped) status.textContent = mi.names.length ? '🧠 recognised: ' + mi.names.join(', ') : 'no taught object in view';
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, image: frameImg, matched: mi ? mi.names : undefined, frames: extra.frames, motion: extra.motion, seconds: extra.seconds, mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: mi ? [] : window.lensRefs?.() }),
+    body: JSON.stringify({ messages: history, image: frameImg, matched: mi ? mi.names : undefined, frames: extra.frames, motion: extra.motion, seconds: extra.seconds, web: window.lensWebOn?.(), place: window.lensPlace?.(), mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: mi ? [] : window.lensRefs?.() }),
   });
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = '';
@@ -55,6 +63,7 @@ async function ask(question, imageOverride) {
     for (const l of lines.filter(Boolean)) {
       const j = JSON.parse(l);
       if (j.error) { bubble.textContent = '⚠ ' + j.error; return; }
+      if (j.web) { showWeb(bubble, j.web); continue; }
       if (j.matched) { status.textContent = j.matched.length ? '🧠 recognised: ' + j.matched.join(', ') : 'no taught object in view'; continue; }
       answer += j.message?.content || '';
       bubble.textContent = answer;
