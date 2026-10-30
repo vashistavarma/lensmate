@@ -59,7 +59,10 @@ window.onBotText = (text, done) => {
   if (text.length < spoken) spoken = 0; // new answer started
   const pending = text.slice(spoken);
   const m = done ? [pending] : pending.match(/^[\s\S]*?[.!?](\s|$)/g); // complete sentences only
-  const chunk = done ? pending : (m ? m.join('') : '');
+  let chunk = done ? pending : (m ? m.join('') : '');
+  if (!done && !chunk && spoken === 0 && pending.length >= 45) {          // first words of an answer: do not wait for a full sentence, start at the last clause break
+    const c = pending.match(/^[\s\S]{30,}[,;:](\s)/); if (c) chunk = c[0];
+  }
   if (chunk.trim()) speak(chunk);
   spoken = done ? 0 : spoken + chunk.length;
 };
