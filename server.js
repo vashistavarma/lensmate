@@ -93,10 +93,31 @@ async function match(req, res) {
   res.end(JSON.stringify({ matched, ms: Date.now() - t0 }));
 }
 
+// Read the camera frame BEFORE the question arrives. Ollama keeps its reading of the picture, so when the real question follows
+// (same system prompt, same history, same picture) reading it takes ~20 ms instead of ~1.1 s.
+async function prewarm(req, res) {
+  const b = await readJSON(req);
+  const image = str(b.image);
+  if (!image) throw bad(400, 'image is required');
+  const mode = str(b.mode, 'chat'), facts = arr(b.facts);
+  const messages = arr(b.messages).filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+  const msgs = [{ role: 'system', content: systemFor(mode) + (MODES[mode] || '') + factsText(facts) }, ...messages,
+    { role: 'user', content: '', images: [image.replace(/^data:image\/\w+;base64,/, '')] }];
+  const t0 = Date.now();
+  try {
+    const r = await fetch(`${OLLAMA}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: MODEL, think: false, stream: false, keep_alive: KEEP, messages: msgs, options: { num_ctx: CTX, num_predict: 1 } }) });
+    if (!r.ok) throw new Error('Ollama returned ' + r.status);
+    await r.json();
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ms: Date.now() - t0 }));
+  } catch (e) { fail(res, 502, 'Ollama error: ' + e.message); }
+}
+
 async function chat(req, res) {
   const b = await readJSON(req);
   const messages = arr(b.messages), refs = arr(b.refs), facts = arr(b.facts);
   const frames = arr(b.frames).filter(f => typeof f === 'string');
+  const spatialText = str(b.spatial).slice(0, 1500); // layout measured in the browser (public/scene.js)
   const pre = Array.isArray(b.matched) ? b.matched.filter(s => typeof s === 'string').map(s => s.slice(0, 60)).slice(0, 5) : null; // taught objects the browser already verified
   const image = str(b.image) || undefined, mode = str(b.mode, 'chat'), motion = str(b.motion), seconds = Number(b.seconds) || 0;
   if (!messages.length || !messages.every(m => m && typeof m.role === 'string' && typeof m.content === 'string')) throw bad(400, 'messages must be a non-empty list of {role, content}');
@@ -122,8 +143,12 @@ async function chat(req, res) {
     // Visual memory: verify each taught reference photo against the live frame (yes/no), then tell the
     // model only the verified names. Verifying first avoids false matches (see eval/visual_memory_eval.py).
     const matched = pre || ((image && !frames.length) ? await matchRefs(refs, image) : []);
-    if (matched.length) msgs[0].content += ' Verified by comparing with photos the user taught you, the camera view contains: ' +
-      matched.join(', ') + '. Use these exact names for those objects.';
+    // Per-question context goes at the END of the user message, after the picture: the system prompt and the picture stay
+    // identical between a pre-warm and the real question, so Ollama can reuse its reading of the picture (see /api/prewarm).
+    let extra = '';
+    if (matched.length) extra += `\n\n[Verified by comparing with photos the user taught you, the camera view contains: ${matched.join(', ')}. Use these exact names for those objects.]`;
+    if (spatialText && !frames.length) extra += `\n\n[Layout measured by code from the camera view; trust it for left/right/above/below/closer: ${spatialText}]`;
+    if (extra) msgs[msgs.length - 1].content += extra;
     const r = await fetch(`${OLLAMA}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -215,6 +240,7 @@ async function route(req, res) {
   if (req.method === 'POST' && req.url.split('?')[0] === '/api/stt') return stt(req, res);
   if (req.method === 'POST' && req.url === '/api/tts') return tts(req, res);
   if (req.method === 'POST' && req.url === '/api/match') return match(req, res);
+  if (req.method === 'POST' && req.url === '/api/prewarm') return prewarm(req, res);
   if (req.method === 'POST' && req.url === '/api/chat') return chat(req, res);
   if (req.method === 'POST' && req.url === '/api/detect') return detect(req, res);
   serveStatic(req, res);

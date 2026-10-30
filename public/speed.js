@@ -43,12 +43,35 @@ function startMatch(image, sig, key, first = false) {
   return p;
 }
 
-// Called when the user starts speaking or typing: begin checking now, so the result is ready when the question is sent.
+// ---- pre-read the camera frame (the biggest part of the wait) ----
+// The model needs ~1.1 s to read a new frame. If the server reads it BEFORE the question arrives (same system prompt, same history,
+// same picture), Ollama keeps that reading and the real question needs ~20 ms for it. We remember which frame was pre-read and
+// send exactly that frame with the question, as long as the scene, the chat so far, the mode and the taught facts are unchanged.
+let warm = null; // { img, sig, t, key }
+const prewarmOn = () => { try { return localStorage.getItem('lensmate.prewarm') !== '0'; } catch { return true; } };
+const warmKey = n => JSON.stringify([history.slice(0, n), window.lensMode?.(), window.lensFacts?.()]);
+const warmValid = (sig, nPrior) => !!(warm && sig && performance.now() - warm.t < 25000 && warm.key === warmKey(nPrior) && sceneDiff(warm.sig, sig) < SAME_SCENE);
+function startWarm(img, sig) {
+  const n = history.length;
+  const mine = warm = { img, sig, t: performance.now(), key: warmKey(n) };
+  fetch('/api/prewarm', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: img, messages: history.slice(0, n), mode: window.lensMode?.(), facts: window.lensFacts?.() }) })
+    .catch(() => { if (warm === mine) warm = null; });
+}
+// ask() calls this after the question is already in history, so the chat "before the question" has one entry fewer
+window.lensWarmFor = () => (prewarmOn() && warmValid(sceneSig(), history.length - 1)) ? warm : null;
+
+// Called when the user starts speaking or typing (or the picture settles): read the frame, then check the taught objects.
 function prefetchMatch() {
-  if (!refsList().length || !cam.videoWidth) return;
-  const sig = sceneSig(), key = refsKey();
-  if (fresh(mcache, key, sig) || (minflight && minflight.key === key && sceneDiff(minflight.sig, sig) < SAME_SCENE)) return;
-  startMatch(grabFrame(), sig, key);
+  if (!cam.videoWidth) return;
+  const sig = sceneSig(); if (!sig) return;
+  const key = refsKey();
+  const needWarm = prewarmOn() && !warmValid(sig, history.length);
+  const needMatch = refsList().length && !(fresh(mcache, key, sig) || (minflight && minflight.key === key && sceneDiff(minflight.sig, sig) < SAME_SCENE));
+  if (!needWarm && !needMatch) return;
+  const img = grabFrame();
+  if (needWarm) startWarm(img, sig);          // first: every question needs the picture read
+  if (needMatch) startMatch(img, sig, key);   // then the taught-object checks
 }
 window.addEventListener('lens-state', e => { if (e.detail === 'listening') prefetchMatch(); });
 document.getElementById('q').addEventListener('input', e => { if (e.target.value.length === 1) prefetchMatch(); });
@@ -76,12 +99,12 @@ window.lensMatchFor = async (question, image, isCrop) => {
 // or a question is being answered; at most one background check every few seconds.
 let lastSig = null, changedAt = performance.now(), lastAuto = -1e9; // lastAuto: time of the last background check (none yet)
 setInterval(() => {
-  if (document.hidden || !refsList().length || !cam.videoWidth) return;
+  if (document.hidden || !cam.videoWidth) return;
   try { if (localStorage.getItem('lensmate.autocheck') === '0') return; } catch {}   // opt out: localStorage 'lensmate.autocheck' = '0'
   const sig = sceneSig(); if (!sig) return;
   if (lastSig && sceneDiff(lastSig, sig) > SAME_SCENE) changedAt = performance.now();
   lastSig = sig;
   const settled = performance.now() - changedAt > 900;
   const busy = document.getElementById('send').disabled;
-  if (settled && !busy && !minflight && performance.now() - lastAuto > 6000 && !fresh(mcache, refsKey(), sig)) { lastAuto = performance.now(); prefetchMatch(); }
+  if (settled && !busy && !minflight && performance.now() - lastAuto > 6000) { lastAuto = performance.now(); prefetchMatch(); } // does nothing if everything is already fresh
 }, 700);

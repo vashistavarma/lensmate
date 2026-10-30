@@ -3,65 +3,65 @@
   "chat_accuracy": "5/5",
   "detect_pass_iou50": "3/3",
   "detect_mean_iou": 0.96,
-  "chat_first_token_s_median": 1.18,
-  "chat_total_s_median": 1.34,
-  "detect_s_median": 1.96
+  "chat_first_token_s_median": 0.1,
+  "chat_total_s_median": 0.31,
+  "detect_s_median": 2.01
  },
  "cases": [
   {
    "id": "colour",
    "ok": true,
-   "ttft": 0.041999101638793945,
-   "total": 0.07372283935546875,
+   "ttft": 0.0370028018951416,
+   "total": 0.06916666030883789,
    "answer": "Blue."
   },
   {
    "id": "count",
    "ok": true,
-   "ttft": 1.1797592639923096,
-   "total": 1.1970117092132568,
+   "ttft": 0.09809350967407227,
+   "total": 0.1131434440612793,
    "answer": "3"
   },
   {
    "id": "read",
    "ok": true,
-   "ttft": 1.1773958206176758,
-   "total": 1.364867925643921,
+   "ttft": 0.10502076148986816,
+   "total": 0.3125615119934082,
    "answer": "The sign says \"OPEN 24 HOURS.\""
   },
   {
    "id": "describe",
    "ok": true,
-   "ttft": 1.1770374774932861,
-   "total": 2.0628159046173096,
+   "ttft": 0.0982964038848877,
+   "total": 1.021272897720337,
    "answer": "The scene shows a light gray background with two distinct shapes. On the left side, there is a red square, and on the right side, there is a blue circle. The sh"
   },
   {
    "id": "teach",
    "ok": true,
-   "ttft": 1.1934351921081543,
-   "total": 1.3446273803710938,
+   "ttft": 1.5119943618774414,
+   "total": 1.6599090099334717,
    "answer": "The green triangle is called a Zorp."
   },
   {
    "id": "detect_all",
    "ok": true,
    "mean_iou": 0.9650148373575187,
-   "total": 1.5990142822265625,
+   "total": 3.098752975463867,
    "answer": "3 boxes, IoU [0.97, 0.95, 0.98]"
   },
   {
    "id": "detect_find_red",
    "ok": true,
    "mean_iou": 0.9674981103552532,
-   "total": 1.9573819637298584,
+   "total": 2.0068044662475586,
    "answer": "1 boxes, IoU [0.97]"
   },
   {
    "id": "detect_find_blue",
    "ok": true,
    "mean_iou": 0.9480545131345053,
-   "total": 1.9865174293518066,
+   "total": 0.6616525650024414,
    "answer": "1 boxes, IoU [0.95]"
   }
  ]

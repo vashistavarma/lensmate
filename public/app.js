@@ -37,13 +37,15 @@ async function ask(question, imageOverride) {
   const bubble = addMsg('…', 'bot');
   let answer = '';
   const t0 = performance.now();
-  const frameImg = extra.frames ? undefined : (imageOverride || grabFrame());
+  const warmed = (!extra.frames && !imageOverride) ? window.lensWarmFor?.() : null;   // a frame the model has already read (see speed.js)
+  const frameImg = extra.frames ? undefined : (imageOverride || warmed?.img || grabFrame());
+  const spatial = extra.frames ? '' : (window.lensSpatialContext?.() || '');           // measured layout of the labelled objects
   // Taught-object check: normally already done while the user was speaking or typing (see speed.js), so no waiting here.
   let mi; try { mi = frameImg ? await window.lensMatchFor?.(question, frameImg, !!imageOverride) : undefined; } catch { mi = undefined; }
   if (mi && !mi.skipped) status.textContent = mi.names.length ? '🧠 recognised: ' + mi.names.join(', ') : 'no taught object in view';
   const res = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: history, image: frameImg, matched: mi ? mi.names : undefined, frames: extra.frames, motion: extra.motion, seconds: extra.seconds, mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: mi ? [] : window.lensRefs?.() }),
+    body: JSON.stringify({ messages: history, image: frameImg, matched: mi ? mi.names : undefined, spatial: spatial || undefined, frames: extra.frames, motion: extra.motion, seconds: extra.seconds, mode: window.lensMode?.(), facts: window.lensFacts?.(), refs: mi ? [] : window.lensRefs?.() }),
   });
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = '';
