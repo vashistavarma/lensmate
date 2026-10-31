@@ -1,4 +1,5 @@
 // Client side of real-time data: the 🌐 switch (off by default, remembered) and "set my location to ...".
+(() => { // own scope: top-level consts here used to clash with ui.js (prevIntent) and stop ui.js from loading
 const webbox = document.getElementById('webbox');
 try { webbox.checked = localStorage.getItem('lensmate.web') === '1'; } catch {}
 webbox.addEventListener('change', () => { try { localStorage.setItem('lensmate.web', webbox.checked ? '1' : '0'); } catch {} status.textContent = webbox.checked ? '🌐 web on: search text may be sent online' : '🌐 web off: nothing leaves this computer'; });
@@ -15,3 +16,4 @@ window.lensIntent = async question => {
   }
   return prevIntent ? prevIntent(question) : false;
 };
+})();
